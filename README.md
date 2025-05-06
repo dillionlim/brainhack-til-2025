@@ -37,6 +37,12 @@ root/
     └── README.md        # More notes about running CV independently
 ```
 
+## Version Control
+
+Do make heavy use of the branches to test and experiment with new models.
+
+The `main` branch should be the finalised branch.
+
 ## Setup
 
 ### Backend (Python FastAPI)
