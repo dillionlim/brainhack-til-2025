@@ -85,6 +85,8 @@ We theorize that our subpar semi-finals showing was due to the fact that:
 | OCR | DocTR | 0.981 | 0.841 |
 | Surprise | TSP-SSIM (Low-N-Regime) + Beam Search-SSIM (High-N-Regime) [^4] | 1.000 | 0.965 |
 
+It is interesting to note that the reinforcement learning scores will not be introduced here, because the variance in scores would be very high between different submissions. Strategies to mitigate this during qualifiers and semi-finals/finals respectively would be discussed in the RL section.
+
 [^2]: This was achieved via an unconventional technique, which will be elaborated on, below, hence, the semi-final model would be significantly different.
 [^3]: This was achieved using hardware-specific TensorRT optimizations. However, since semi-final participant servers were built on a 5070Ti architecture, which we do not have access to, we ended up switching to a Pytorch implementation with a slightly lower, but comparable speed score.
 [^4]: C++ and Python implementations ended up having the exact same accuracy / speed combination, to 3 significant figures.
