@@ -1,0 +1,15 @@
+[project]
+name = "surprise-python39"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.115.12",
+    "numba>=0.60.0",
+    "numpy>=2.0.2",
+    "opencv-python-headless>=4.11.0.86",
+    "requests>=2.32.4",
+    "tqdm>=4.67.1",
+    "uvicorn[standard]>=0.34.3",
+]
