@@ -27,7 +27,7 @@ TIL-AI 2024 comprised of 3 standard tasks, 1 surprise task (introduced on day 1 
 
 For reinforcement learning (RL), the aim was to drive a TurtleBot3 Burger through a simulated maze environment, interacting with other agents and completing challenges.
 
-Each match is played by four teams, and consists of four rounds, such that each team will play a scout once, and guards three times[^4]. 
+Each match is played by four teams, and consists of four rounds, such that each team will play a scout once, and guards three times[^1]. 
 
 As a scout, the aim is to:
 
@@ -39,7 +39,7 @@ At mission points (for semi-finals and finals), a scout will receive 5 missions,
 
 As a guard, the aim is to capture the scout (+500 points).
 
-[^4] The points mentioned are 10 times that used in qualifiers, and the abovementioned point distribution was used for semi-finals and finals.
+[^1] The points mentioned are 10 times that used in qualifiers, and the abovementioned point distribution was used for semi-finals and finals.
 
 ### Additional Note
 
@@ -75,19 +75,19 @@ We theorize that our subpar semi-finals showing was due to the fact that:
 |-|-|-|-|
 | ASR | parakeet-tdt-0.6b-v2 | 0.952 | 0.939 |
 | CV | TODO | 0.532 | 0.947 |
-| OCR | PaddleOCR [^1] | 1.000 | 0.941 |
+| OCR | PaddleOCR [^2] | 1.000 | 0.941 |
 
 ## Evaluation results (Pre-semi-finals)
 | Task | Model | Accuracy score | Speed Score |
 |-|-|-|-|
 | ASR | parakeet-tdt-0.6b-v2 (Unchanged) | 0.952 | 0.939 |
-| CV | TODO | 0.615 | 0.892 [^2] |
+| CV | TODO | 0.615 | 0.892 [^3] |
 | OCR | DocTR | 0.981 | 0.841 |
-| Surprise | TSP-SSIM (Low-N-Regime) + Beam Search-SSIM (High-N-Regime) [^3] | 1.000 | 0.965 |
+| Surprise | TSP-SSIM (Low-N-Regime) + Beam Search-SSIM (High-N-Regime) [^4] | 1.000 | 0.965 |
 
-[^1]: This was achieved via an unconventional technique, which will be elaborated on, below, hence, the semi-final model would be significantly different.
-[^2]: This was achieved using hardware-specific TensorRT optimizations. However, since semi-final participant servers were built on a 5070Ti architecture, which we do not have access to, we ended up switching to a Pytorch implementation with a slightly lower, but comparable speed score.
-[^3]: C++ and Python implementations ended up having the exact same accuracy / speed combination, to 3 significant figures.
+[^2]: This was achieved via an unconventional technique, which will be elaborated on, below, hence, the semi-final model would be significantly different.
+[^3]: This was achieved using hardware-specific TensorRT optimizations. However, since semi-final participant servers were built on a 5070Ti architecture, which we do not have access to, we ended up switching to a Pytorch implementation with a slightly lower, but comparable speed score.
+[^4]: C++ and Python implementations ended up having the exact same accuracy / speed combination, to 3 significant figures.
 
 ## Hardware Used
 
