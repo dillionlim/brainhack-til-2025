@@ -1,0 +1,28 @@
+[project]
+name = "asr-training"
+version = "0.1.0"
+description = "ASR Training"
+requires-python = ">=3.8"
+
+dependencies = [
+  "torch==2.3.1+cu118",
+  "torchaudio==2.3.1+cu118",
+  "torchvision==0.18.1+cu118",
+  "Cython>=0.29",
+  "soundfile",
+  "omegaconf",
+  "wheel>=0.45.1",
+  "fasttext-wheel>=0.9.2",
+  "nemo-toolkit[asr]>=2.3.0",
+  "cuda-python>=12.9.0",
+  "jiwer>=3.1.0",
+  "pyyaml>=6.0.2",
+  "granian>=2.2.6",
+  "fastapi>=0.115.12",
+  "uvicorn>=0.34.2"
+]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true

@@ -1,0 +1,35 @@
+[project]
+name = "asr-parakeet"
+version = "0.1.0"
+description = "Fine-tuning NeMo ASR Parakeet-TDT"
+requires-python = "==3.10.*"
+
+dependencies = [
+  "Cython>=0.29",
+  #"nemo_toolkit[asr]==1.21.0",
+  "soundfile",
+  "omegaconf",
+  "wheel>=0.45.1",
+  "fasttext-wheel>=0.9.2",
+  "nemo-toolkit[asr]>=2.3.0",
+  "cuda-python>=12.9.0",
+  "jiwer>=3.1.0",
+  "pyyaml>=6.0.2",
+  "granian>=2.2.6",
+  "fastapi>=0.115.12",
+  "uvicorn>=0.34.2",
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
+  "torchaudio>=2.7.0",
+  "noisereduce>=3.0.3",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+torchvision = { index = "pytorch" }
+torchaudio = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

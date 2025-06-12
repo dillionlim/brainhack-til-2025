@@ -1,24 +1,28 @@
-# Dockerfile for building the ASR image.
+FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda12.8-devel-ubuntu24.04 AS builder
 
+ENV DEBIAN_FRONTEND=noninteractive \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_NO_CACHE=1 \
+    CUDA_LAUNCH_BLOCKING=1 \
+    TORCH_USE_CUDA_DSA=1
 
-# The base image, an example deep learning VM.
-# For a full list, see https://us-docker.pkg.dev/deeplearning-platform-release/gcr.io/
-# For info, see https://cloud.google.com/deep-learning-vm/docs/images#supported-frameworks
-FROM python:3.12-slim
+# RUN apt-get update && apt-get install libgl1 libglib2.0-0 -y && rm -rf /var/lib/apt/lists/*
 
-# Configures settings for the image.
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_ROOT_USER_ACTION=ignore
-WORKDIR /workspace
+# Add uv binary and install python
+COPY --from=ghcr.io/astral-sh/uv:0.7.9 /uv /uvx /bin/
+RUN uv python install 3.10
 
-# Installs your dependencies.
-RUN pip install -U pip
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
 
-# Copies your source files.
-COPY src .
+COPY pyproject.toml uv.lock* ./
+RUN uv lock && uv sync --locked --no-dev
 
-# Starts your model server.
-CMD uvicorn asr_server:app --port 5001 --host 0.0.0.0
+# Copy the rest of the codebase
+COPY ./src ./
+
+RUN uv run init_model.py
+
+EXPOSE 5001
+
+CMD ["uv", "run", "granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "5001", "--workers", "1", "asr_server:app"]

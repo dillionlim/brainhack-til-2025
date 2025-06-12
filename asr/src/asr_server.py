@@ -6,7 +6,7 @@
 
 import base64
 from fastapi import FastAPI, Request
-from .asr_manager import ASRManager
+from asr_manager import ASRManager
 
 
 app = FastAPI()
@@ -25,20 +25,19 @@ async def asr(request: Request) -> dict[str, list[str]]:
         A `dict` with a single key, `"predictions"`, mapping to a `list` of
         `str` transcriptions, in the same order as which appears in `request`.
     """
+    try:
+        inputs_json = await request.json()
 
-    inputs_json = await request.json()
-
-    predictions = []
-    for instance in inputs_json["instances"]:
-
-        # Reads the base-64 encoded audio and decodes it into bytes.
-        audio_bytes = base64.b64decode(instance["b64"])
-
-        # Performs ASR and appends the result.
-        transcription = manager.asr(audio_bytes)
-        predictions.append(transcription)
-
-    return {"predictions": predictions}
+        predictions = []
+        
+        audio_bytes_list = [base64.b64decode(instance["b64"]) for instance in inputs_json["instances"]]
+        predictions = manager.asr_batch(audio_bytes_list)
+        
+        # print(predictions)
+        return {"predictions": predictions}
+    except Exception as e:
+        print("ASR endpoint error:", str(e))
+        return
 
 
 @app.get("/health")
