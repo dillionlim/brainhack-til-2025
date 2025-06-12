@@ -1,0 +1,5 @@
+Exporting to onnx
+https://mindee.github.io/doctr/using_doctr/using_model_export.html
+
+Training recogniser
+https://github.com/mindee/doctr/tree/main/references/recognition#readme
