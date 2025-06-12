@@ -47,7 +47,7 @@ We used `crnn_mobilenet_v3_large` for the semi-finals as it is significantly fas
 
 For text detector, we fine-tuned it using the full default dataset. However, as we intend to do preprocessing for inference, we also preprocessed the default dataset for the model to train on.
 
-For text recogniser, we initially tried fine-tuning it with the full dataset. However, we realised that the number of unique ground truths for the provided dataset is quite limited (only 5 unique ground truths). To prevent overfitting, we generated our own dataset with text from ChatGPT. 
+For text recogniser, we initially tried fine-tuning it with the full dataset. However, we realised that the number of unique ground truths for the provided dataset is quite limited (only 5 unique ground truths). To prevent overfitting, we generated our own dataset with text from ChatGPT. The generated images had text with different [fonts](doctr/train/data_prep/fonts/). They were augmented with *salt and pepper noise* and *gaussian blur* and preprocessed. The *'ghost text'* was not added as it was hoped that the preprocessing would succesfully remove most of it. 
 
 For docTR, text recognition has to be fine-tuned on images of **words** while with PaddleOCR, text recognition can be fine-tuned on images of **lines/phrases**
 
