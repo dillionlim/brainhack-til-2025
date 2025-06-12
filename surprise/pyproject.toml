@@ -1,9 +1,9 @@
 [project]
 name = "surprise-python39"
 version = "0.1.0"
-description = "Add your description here"
+description = "TIL-AI 2025 Surprise Task Solution"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = "==3.9"
 dependencies = [
     "fastapi>=0.115.12",
     "numba>=0.60.0",
