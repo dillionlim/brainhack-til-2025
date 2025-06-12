@@ -15,7 +15,7 @@
 <!-- TOC -->
 
 ## Introduction
-TIL-AI 2024 comprised of 3 standard tasks, 1 surprise task (introduced on day 1 of the semi-finals, with approximately 12 hours to complete the task) and an overarching reinforcement learning (RL) task:
+TIL-AI 2025 comprised of 3 standard tasks, 1 surprise task (introduced on day 1 of the semi-finals, with approximately 12 hours to complete the task) and an overarching reinforcement learning (RL) task:
 * **Automatic speech recognition (ASR)** \
     Convert noisy, accented audio into a text transcript.
 * **Compute Vision (CV)** \
