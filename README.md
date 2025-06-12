@@ -27,7 +27,7 @@ TIL-AI 2024 comprised of 3 standard tasks, 1 surprise task (introduced on day 1 
 
 For reinforcement learning (RL), the aim was to drive a TurtleBot3 Burger through a simulated maze environment, interacting with other agents and completing challenges.
 
-Each match is played by four teams, and consists of four rounds, such that each team will play a scout once, and guards three times[^1]. 
+Each match is played by four teams, and consists of four rounds, such that each team will play a scout once, and guards three times [^1]. 
 
 As a scout, the aim is to:
 
@@ -39,7 +39,7 @@ At mission points (for semi-finals and finals), a scout will receive 5 missions,
 
 As a guard, the aim is to capture the scout (+500 points).
 
-[^1] The points mentioned are 10 times that used in qualifiers, and the abovementioned point distribution was used for semi-finals and finals.
+[^1]: The points mentioned are 10 times that used in qualifiers, and the abovementioned point distribution was used for semi-finals and finals.
 
 ### Additional Note
 
