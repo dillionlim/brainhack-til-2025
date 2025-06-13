@@ -361,9 +361,97 @@ For more detailed RL model analysis, refer to our [RL testbed repository](https:
 
 **Warning:** These submodules are quite large in size (~6 GB in total).
 
+### Key Concepts in RL Planning
+
+We shall examine a few ideas that we focused on when coming up with a solution to this task.
+
+### The "Two-Turn" Separation Idea
+
+In our model training, we heavily emphasised the idea of a "two-turn" separation minimum between scouts and guards. Let us examine why this is the case, in the particular case of a one-scout-one-guard-chase scenario.
+
+On average, this would be the most common scenario, and the scout can avoid getting caught most easily in this case by following the rule above.
+
+#### "One-Turn" Separation
+
+If the guard can move to the current square a scout is on in only one turn, if both agents play optimally, the guard will eventually always catch the scout, unless there are insufficient moves left before the round ends.
+
+By the nature of the RL task, the moveset for both agents are symmetric, but the maze is finite (16 by 16).
+
+Suppose both agents move optimally, and the guard is one turn away from the scout. If the scout performs any move other than moving away from the guard (i.e. turning, staying still or moving into the guard), it will get caught either in the same turn or the next turn.
+
+This can be seen below:
+
+![Suboptimal Moves](docs/rl/one_turn_suboptimal.png)
+
+The only optimal move for the scout, is therefore to move away from the guard. However, since moves are symmetric, the optimal move for the guard is always to perform the same move as the scout, thereby maintaining a one-turn separation from the scout.
+
+Due to the finite nature of the grid, the scout can never continuously move away from the guard. In fact, since the grid is 16 by 16, the maximum number of moves that a scout can escape for before reaching a wall will be 15. Once it reaches a wall, it needs to make one of the three suboptimal moves mentioned above, and will therefore get caught.
+
+Therefore, if both scout and guards are playing optimally (which was assumed to be the case for semi-finals onwards), if a scout and guard is determined to have a one-turn separation, it will always get caught.
+
+#### "Two-Turn" Separation
+
+As a corollary of the above explanation, a two-turn separation will always guarantee that if both the scout and guard play optimally, the scout will never get caught, even if the game goes on forever.
+
+The suboptimal moves made by the scout in the one-turn scenario (particularly, turning) is supported by the one-turn buffer, where the guard will move to the tile right next to the scout temporarily.
+
+However, after moving forwards / backwards away from the guard, the guard's optimal move is to symmetrically perform the same move. This means that the distance between the scout and guard after this move would be two squares again, and the scout will therefore never get caught **unless it walks into a deadend**.
+
+### Deadends
+
+A deadend is defined as a tile where there are 3 walls surrounding it, or any tile with 2 or more walls, that are adjacent to another deadend tile.
+
+This is illustrated in the image below:
+
+![Deadends](docs/rl/deadend.png)
+
+The yellow cells are all considered to be deadends, because they fulfil the definition above, and they only have one or no possible move that you can make to not return to the previous cell. The blue cell is not a deadend, because there is only one wall attached to the corridor.
+
+It is an extremely risky manoeuvre to enter a deadend, especially if a guard is chasing the scout. Suppose a guard is chasing a scout, and the scout enters a deadend. Even if the scout maintains the two-turn separation as described above, it will eventually get caught because the scout will eventually reach a cell (the last cell of a deadend) that has no moves which maintain the distance between the scout and guard.
+
+Conversely, the blue cell provides two alternative routes away from the cell, and the scout is therefore not locked into a singular choice.
+
+Due to the partially observable nature of the grid, there are two kinds of deadends, "visible" and "invisible" deadends, with the latter being much more deadly. Visible deadends lie within the viewcone of a scout, and therefore can be avoided through a simple rule-based system (i.e. avoid moving into deadend tiles). Invisible deadends, however, involve a long corridor of deadend tiles, where the end of the deadend cannot be seen. This makes it difficult to decide if it is a corridor or deadend.
+
+Let us consider an example map as shown in 
+
+![Hidden Deadend](docs/rl/hidden_deadend.png)
+
+The green area cannot be determined with certainty to be either a deadend or corridor, and the same can be said for the red area, until one enters the deadend. While entering the green area whilst being chased by a guard is not fatal, entering the red area is certainly fatal.
+
+This leads to an important question of risk against reward, where it might be better to be more conservative and avoid such risky areas where possible, against exploring such risky areas, while running the risk of getting cornered. The risk appetite of each team therefore needs to be determined accordingly. 
+
+Naturally, some maps, such as the map depicted above, have many hidden deadends, while some maps, such as the semi-finals map for advanced (seed 41) only have a single hidden deadend, which would therefore result in varying score distributions for different strategies.
+
+### Breadcrumb Trails
+
+For guards, an interesting idea is to make use of breadcrumb trails. Where a scout has collected points, the tiles will no longer have any points on them. When the scout passes through a narrow corridor, this leaves behind a "breadcrumb trail" of empty tiles that the guard can use to track down the scout. In practice, because the guards spawn far away from the scouts, this is rarely useful if the scout enters a large, open room.
+
 ### Algorithmic Scout Models
 
-To be done
+#### Basic Greedy Model
+
+The first algorithmic model that was submitted used a basic A* algorithm, greedily prioritising directions with mission tiles, and heavily penalising guards. This yielded a top scout score of about 0.4.
+
+#### Monte-Carlo Tree Search (MCTS)
+
+There were two school of thoughts when we implemented a monte-carlo tree search method for an algorithmic scout.
+
+The first school of thought was to use MCTS directly on the next best move. While this yielded average results, one note was that the path planning tended to be quite unstable, with many unnecessary turns often occurring.
+
+The second school of thought was to use MCTS to plan the goalpoints, and A* would be used to pathfind to the goalpoint directly. The 5-pointers would therefore be included in the pathplanning. We use a standard UCT selection model, with the exploration-exploitation parameter tuned to the standard $\sqrt{2}$. This method mitigated the unnecessary turns, but ended up being caught by guards fairly often.
+
+This leads to the "switcheroo" strategy, which is also applicable to a RL scout model.
+
+We define two model regimes, a collector regime, and an escaper regime. The collector regime has been defined above.
+
+The escaper regime attempts to maximise the distance between the current agent and the guard it is escaping from, until it gets out of sight of the guard. After which, it has a cooldown of $x$ turns before we switch back to the collector regime, because it has been noted that there is a tendency for the collector to return back to the original location, and the guard still remains in the general vicinity. We then tune the number of turns it remains in the escaper regime before switching back.
+
+#### Areas for Improvement
+
+We dropped an algorithmic scout model pretty early on because it was not performing necessarily better than the RL models. However, we note that the algorithmic escaper tends to run into dead ends which can be seen, which could have been avoided with another rule in the ruleset.
+
+Furthermore, the ruleset for the escaper could be tuned to avoid unnecessary escaping as long as one is at least two steps ahead (the necessity of this rule is be elaborated upon above).
 
 ### Algorithmic Guard Models
 
@@ -476,7 +564,7 @@ For question 1, we decided that a good way to determine this was by summing the 
 
 For question 2, two alternative metrics were tested:
 
-#### Mean Squared Error (MSE)**
+#### Mean Squared Error (MSE)
 
 For two $1 \times n$ matrices $A$ and $B$ of the same shape, the MSE is defined as:
 
