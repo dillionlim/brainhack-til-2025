@@ -231,7 +231,7 @@ The only optimization done was to conduct batch inference in batches of 4 (since
 * It might be interesting to attempt to train it on a denoised dataset to see the results, or implement k-fold cross validation to improve robustness.
 
 
-## OCR Rundown
+## OCR
 
 The OCR task involves reading text in a scanned document. The scanned documents have different layouts and its text has different fonts. Most of the scanned documents also have some or all of the following three augmentations:
 
