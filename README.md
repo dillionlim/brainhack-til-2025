@@ -66,17 +66,14 @@ git submodule update --init
 
 ## Achievements
 * 1st overall in Qualifiers
-* 2nd placing in 1st seeding group in semi-finals
-* 1579 points (first run - official score) / ~1700 points (second run - after restart due to hardware restart) in semi-finals (which puts us at 4th - 5th placing in terms of raw score across the entire Advanced category)
 * Surprise Challenge Winner
 
 In this format, a single round was conducted to decide the winner in each bracket.
 
 We theorize that our subpar semi-finals showing was due to the fact that:
 
-1. 2 other teams were not actively moving about, which contributes to a harder time catching the guard as a scout-guard pair moving optimally will result in the scout never getting caught.
-2. A slight bug in the observation layer for the guard model ended up resetting the entire observation layer, leading to oscillations observed in 1 round as a guard.
-3. We prioritised a low-risk strategy, which involved us tuning for the "best worst case" (maximising the minimum, reducing the variance) and playing more conservatively. The matchup ended up facing off against a riskier scout, which paid off with less aggressive guards. This conservative scout assumes that all 3 guards will be actively searching for the scout, and therefore avoids high-risk, unknown situations (elaborated below).
+1. There was a bug in the guard algorithm in the 2nd round.
+2. We prioritised a low-risk strategy with the focus being primarily on preventing the scout from getting caught. This led to the scout being unwilling to take riskier paths down narrow corridors where more missions and recon points could be gathered, resulting in a lower score.
 
 ## Evaluation results (Qualifiers)
 | Task | Model | Accuracy score | Speed Score |
@@ -343,6 +340,6 @@ RL was also trained / evaluated on edge devices (varying architectures )on all m
 ## Final words
 We like to thank [Ryan](https://github.com/ryan-tribex), [Ada](https://github.com/HoWingYip) and [Tianshi](https://github.com/qitianshi) for their hard work in setting up the technical side of the competition (which is an impressive combination of various frameworks - ROS, websocketing, networking, hardware infrastructure, etc) and support during the competition.
 
-We would also like to thank DSTA for organizing the largest yearly ML competition in Singapore. Despite not coming in top 4 (largely due to a format which relies heavily on both opponents playing in good faith, and luck), we still believe that the work we have done for this iteration is highly technically interesting, and will prove valuable to any readers.
+We would also like to thank DSTA for organizing the largest yearly ML competition in Singapore. Despite not coming in top 4, we still believe that the work we have done for this iteration is highly technically interesting, and will prove valuable to any readers.
 
 We would also like to thank team [12000SGDPLUSHIE](https://github.com/aliencaocao/TIL-2024) for a nice format of their previous writeup and training code, which proved to be useful in initial exploratory training.
