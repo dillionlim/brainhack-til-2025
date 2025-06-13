@@ -230,6 +230,106 @@ The only optimization done was to conduct batch inference in batches of 4 (since
 * Spell checking with standard models or sanity checking with a LLM were considered, however, it was deemed that they would decrease the speed score too much, and were therefore not used. 
 * It might be interesting to attempt to train it on a denoised dataset to see the results, or implement k-fold cross validation to improve robustness.
 
+
+## OCR Rundown
+
+The OCR task involves reading text in a scanned document. The scanned documents have different layouts and its text has different fonts. Most of the scanned documents also have some or all of the following three augmentations:
+
+1. Salt and pepper noise
+2. Blurred text
+3. Mirrored 'ghost text' pasted on the original text
+
+### Preprocessing
+
+To handle the augmentations and the layout, all images were preprocessed using **median blur** (to remove salt and pepper noise) and **OTSU thresholding** (to remove as much 'ghost text' as possible without degrading the original text too much). **CLAHE** (Contrast Limited Adaptive Histogram Equalization) was tried as well to enhance constrast. Although it made the image look slightly clearer, the score did not improve with it. 
+
+Final preprocessing pipeline:
+```python
+import numpy as np
+import cv2
+
+def preprocess(image_bytes: bytes) -> np.ndarray:
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+
+    # Mask to remove 'ghost text'
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
+    thresh, _ = cv2.threshold(blurred, 0, 255, cv2.THRESH_OTSU)
+    img[img>thresh] = 255
+
+    # Make it fLavourless 
+    img = cv2.medianBlur(img, 3)
+
+    # Resize (no idea how this helps because docTR resizes it to 1024 by 1024 anyways but it did improve score by a bit)
+    img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
+
+    # Convert back to RGB (required by DocTR)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+          
+    return img
+```
+
+| <img src="docs/ocr/sample_input.jpeg" alt="input" width="400"/> | <img src="docs/ocr/sample_output.jpeg" alt="output" width="400"/> |
+|:------------------------------------:|:--------------------------------------:|
+| Before preprocessing                 | After preprocessing                    |
+
+
+Not all of the mirrored 'ghost text' were able to be removed. As such, the text detector was fine-tuned to hopefully handle such cases.
+
+### Postprocessing
+
+Most OCR libraries return the lines of text sorted top-down. However, as documents have 2 columns, this will return the text in the wrong order. To handle this, a simple comparison to re-order the lines was used. 
+
+```python 
+LinesData = tuple[list[int], str, float]
+# (bounding boxes, text, confidence score)
+
+def arrange_lines(line1: LinesData, line2: LinesData) -> bool:
+    bbox1 = line1[0]
+    bbox2 = line2[0]
+    
+    if bbox1[2] < bbox2[0]:
+        return -1
+        
+    if bbox2[2] < bbox1[0]:
+        return 1
+    
+    return bbox1[1] - bbox2[1] 
+```
+
+This will not work for more complex layouts (e.g. those found in physical newspapers).
+
+
+Besides layouts, improving accuracy with a spellchecker was also considered. Transformer-based language models such as `FLAN-T5` proved too slow (timed out). A faster algorithmic method in `symspellpy` was tried. However, despite adjusting the frequency of words in the default unigram dictionary to better suit the words used in this context (operation/mission-related words), no discernable improvement was achieved. Hence, spellchecking was not incorporated. 
+
+### Models Tried
+
+A variety of baseline models were tried. Some such as pytesseract, surya-ocr and trocr were able to achieve decent accuracy but were extremely slow (surya-ocr timed out in the submission). PaddleOCR and docTR were able to achieve high accuracy and was much faster. As docTR had higher accuracy and slightly better speed, it was used for the semi-finals.
+
+| Detector Model | Dataset | Hyperparameters | Recogniser Model | Dataset | Hyperparameters | Score | Speed |
+|:--------:|:------------:|:----------------:|:----------------:|:------------:|:----------------:|:-----:|:-----:|
+| `fast_base`    | Default (preprocessed) | 10 epochs, LR 0.0001, batch size 2 | `crnn_vgg16_bn` | 3 epochs default + 3 epochs Mixedv2 | 3 epochs, LR 0.00002, batch size 256, freeze backbone + 5 epochs LR 0.00001, batch size 128, unfreeze backbone | 0.983 | 0.779 |
+| `fast_base`    | Default (preprocessed) | 10 epochs, LR 0.0001, batch size 2 | `crnn_mobilenet_v3_large` | Mixedv2 | 3 epochs LR 0.00001, batch size 128, unfreeze backbone | 0.981 | 0.844 |
+
+For the full list of models submitted, hyperparameters and evaluation scores, refer to the [model tracking google sheet](https://docs.google.com/spreadsheets/d/1AKAwwwYEBJRM5_3b5ByRxlXXl7o_wsypeeivPmWCrRI).
+
+Default hyperparameters were used if they were not explicitly stated.
+
+For the semi-finals, `crnn_mobilenet_v3_large` was used as it is significantly faster for only a slight dip in accuracy. 
+
+#### Training
+
+The text detector was fine-tuned using the full default dataset. However, as preprocessing was intended to be conducted before inference, the images in the default dataset were also preprocessed before training.
+
+The text recogniser was initially fine-tuned with the full dataset. However, it was discovered that the number of unique ground truths for the provided dataset is quite limited (only 5 unique ground truths). To prevent overfitting, a custom dataset with text from ChatGPT was created. The generated images had text with different [fonts](ocr/doctr/train/data_prep/fonts/). They were augmented with *salt and pepper noise* and *gaussian blur* and preprocessed. The *'ghost text'* was not added as it was hoped that the preprocessing would succesfully remove most of it. This custom dataset of about 240000 words was mixed with a portion of the default dataset (about 600 out of the 4500 provided images, so about 300k out of 2.25m words) with a 80-20 train-val split to create the `Mixedv2` dataset shown above. 
+
+For docTR, text recognition has to be fine-tuned on images of **words** while with PaddleOCR, text recognition can be fine-tuned on images of **lines/phrases**
+
+The generation and preperation of datasets can be found in the following files:
+- [docTR](ocr/doctr/train/data_prep/dataset_prep.ipynb) 
+- [paddleocr](ocr/paddle/train/dataset_prep.ipynb)
+
+
 ## Hardware Used
 
 Aside from the GCP instance, we also made use of Kaggle's free 2xT4 and TPUv4-8 pod for training.
