@@ -4,3 +4,9 @@
 [submodule "til-25-environment"]
 	path = til-25-environment
 	url = https://github.com/til-ai/til-25-environment.git
+[submodule "external/til-25-rl-testbed"]
+	path = external/til-25-rl-testbed
+	url = https://github.com/jxinnan/til-25-rl-testbed
+[submodule "external/til-25-rl-zoo"]
+	path = external/til-25-rl-zoo
+	url = https://github.com/jxinnan/til-25-rl-zoo

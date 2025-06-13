@@ -16,7 +16,19 @@
   * [Additional Steps to Improve](#additional-steps-to-improve)
 * [CV](#cv)
 * [OCR](#ocr)
+  * [Preprocessing](#preprocessing)
+  * [Postprocessing](#postprocessing)
+  * [Models Tried](#models-tried)
+  * [Training](#training-1)
+  * [Qualifiers Method](#qualifiers-method)
 * [RL](#rl)
+  * [Remote RL Repositories](#remote-rl-repositories)
+  * [Algorithmic Scout Models](#algorithmic-scout-models)
+  * [Algorithmic Guard Models](#algorithmic-guard-models)
+  * [RL Scout Models](#rl-scout-models)
+  * [RL Guard Models](#rl-guard-models)
+  * [Overall Analysis](#overall-analaysis)
+  * [Qualifiers Method](#qualifiers-method-1)
 * [Surprise Task](#surprise)
 * [Hardware used](#hardware-used)
 * [Final words](#final-words)
@@ -343,6 +355,30 @@ During the qualifiers, it was discovered that the dataset provided contained onl
 
 ## RL
 
+### Remote RL repositories
+
+For more detailed RL model analysis, refer to our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed). For the simulated environment that we used to evaluate various models with convenience scripts, refer to our [RL model zoo](https://github.com/jxinnan/til-25-rl-zoo).
+
+**Warning:** These submodules are quite large in size (~6 GB in total).
+
+### Algorithmic Scout Models
+
+To be done
+
+### Algorithmic Guard Models
+
+To be done
+
+### RL Scout Models
+
+To be done
+
+### RL Guard Models
+
+To be done
+
+### Overall Analaysis
+
 To be done
 
 ### Qualifiers Method
@@ -355,7 +391,170 @@ Furthermore, the scouts used in qualifiers were not very well-trained, therefore
 
 ## Surprise
 
+### Initial Exploration
+
+The first method that was immediately thought of was edge-matching using a "difference" metric. Naturally, there are a lot of different metrics, but the first that was properly tried ended up being SSD (sum of squared differences).
+
+For two $m \times n$ matrices $A$ and $B$ of the same shape, the SSD is defined as:
+
+$$SSD(A,B)=\sum_{i=1}^m \sum_{j=1}^n(A_{i,j}-B_{i,j})^2,$$
+
+where $M_{i,j}$ is the pixel intensity at $(i,j)$ of matrix $M$. 
+
+For comparison of two 1-dimensional arrays (since only the leftmost and rightmost 1 pixel edges were used), the formula above can be reduced to 
+$$SSD(A,B)=\sum_{i=1}^n(A_i-B_i)^2,$$
+or the squared L2 norm of the difference vector.
+
+A simple implementation of the above is:
+
+```py
+import cv2
+import numpy as np
+
+class SurpriseManager:
+    def __init__(self, edge_width: int = 1, to_gray: bool = True):
+        self.edge_width = edge_width
+        self.to_gray = to_gray
+
+    def surprise(self, slices: list[bytes]) -> list[int]:
+        # 1. Decode
+        imgs = []
+        for buf in slices:
+            arr = np.frombuffer(buf, dtype=np.uint8)
+            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if img is None:
+                raise ValueError("Failed to decode one of the input slices")
+            imgs.append(img)
+
+        # 2. Extract edges
+        edges = []
+        for img in imgs:
+            proc = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if self.to_gray else img
+            h, w = proc.shape[:2]
+            edges.append((proc[:, :self.edge_width], proc[:, w-self.edge_width:]))
+
+        N = len(edges)
+        # 3. Build SSD score matrix
+        score = np.full((N, N), np.inf, dtype=np.float64)
+        for i, (_, r) in enumerate(edges):
+            for j, (l, _) in enumerate(edges):
+                if i != j:
+                    diff = (r.astype(np.int32) - l.astype(np.int32))
+                    score[i, j] = np.sum(diff * diff)
+
+        # 4. Find the “true” start: slice whose left edge is worst‐matched by any right edge
+        incoming_scores = np.full(N, np.inf, dtype=np.float64)
+        for j in range(N):
+            # find best match _to_ j’s left edge from any other right edge
+            incoming_scores[j] = np.min([score[i, j] for i in range(N) if i != j])
+        start = int(np.argmax(incoming_scores))
+
+        # 5. Greedy walk, always picking the best‐matched unused slice
+        order = [start]
+        used = {start}
+        while len(order) < N:
+            current = order[-1]
+            # sort candidates by ascending SSD from current’s right edge
+            for nxt in np.argsort(score[current]):
+                if nxt not in used:
+                    order.append(int(nxt))
+                    used.add(nxt)
+                    break
+
+        return order
+```
+
+This attained a score of ~0.6, which was a reasonable start.
+
+### Analysis
+
+There are a few places where the above could be improved:
+1. How can the left edge be better determined?
+2. Are there any other difference metrics that can be used?
+
+For question 1, we decided that a good way to determine this was by summing the left-edge thresholded pixel values. The leftmost slice will be the slice with the brightest left edge (i.e., maximum sum).
+
+For question 2, two alternative metrics were tested:
+
+#### Mean Squared Error (MSE)**
+
+For two $1 \times n$ matrices $A$ and $B$ of the same shape, the MSE is defined as:
+
+$$MSE(A,B)=\frac{1}{n}\sum_{i=1}^n (A_i-B_i)^2$$
+
+#### Structural Similarity Index Measure (SSIM)
+
+For two $m \times n$ matrices $A$ and $B$ of the same shape, the SSIM is defined as:
+
+$$SSIM(A,B)=\frac{(2\mu_A\mu_B+C_1)(2\sigma_{AB}+C_2)}{(\mu_A^2+\mu_B^2+C_1)(\sigma_A^2+\sigma_B^2+C_2)}$$
+
+where:
+* $\mu_X$ is the pixel sample mean of matrix $X$;
+* $\sigma_X^2$ is the pixel sample mean of $X$;
+* $\sigma_{XY}$ is the sample covariance of $X$ and $Y;
+* $c_1=(k_1L)^{2}$ and $c_{2}=(k_2L)^{2}$ are two variables to stabilize the division with a weak denominator, and where;
+* $L = 2^{BPP} - 1$ is the dynamic range of the pixel-values and $BPP$ is the bits-per-pixel;
+* By default, $k_1 = 0.01$ and $k_2 = 0.03$.
+
+#### Comparison
+
+MSE was found to do significantly worse than SSIM for this use case. We hypothesise the reason are:
+* MSE penalizes pixel-wise differences equally, regardless of the overall structure similarity. This penalizes small pixel offsets very heavily.
+* Instead, SSIM attempts to model human perception, and compares images with reference to luminance, contrast (variance) and structure (covariance). It is therefore more sensitive to structural similarity and more robust to noise and offsets.
+
+From information gathered from other groups in the advanced semi-finals, MSE can yield up to 0.8-0.9 in this task if implemented well with other methods, which is a respectable score.
+
+Various other metrics such as cosine similarity, ORB matching from OpenCV2 were tested,but yielded similarly disappointing results. As a result, SSIM was chosen as the metric of choice. 
+
+### Initial naive implementation of SSIM
+
+A copy of our initial naive implementation of SSIM with the above decisions can be found in [the src_python_initial folder](surprise/src_python_initial/surprise_manager.py).
+
+This yielded a good score of 0.983 for accuracy and 0.977.
+
+Tuning hyperparameters ($k_1$ and $k_2$) revealed that higher values of $k_2$ were more suitable for this task, and we chose a value of $k_2 = 0.05$ for this iteration, leading to an accuracy of 0.984.
+
+### Beam Search
+
 To be done
+
+### Travelling Salesman Problem (TSP)
+
+To be done
+
+### Putting it all together
+
+At the point of us asking, the organisers chose not to reveal that the final test dataset would have exactly $N = 15$ slices. Therefore, we went with a hybrid implementation, given that the TSP solution had a time complexity of $O(N^2 \times 2^N)$, and would time out for larger values of $N$. We implemented a low-$N$-regime and high-$N$-regime solution, where TSP would be used for $N \leq 20$ and beam search would be used for $N > 20$.
+
+We therefore submitted a final solution for this with accuracy 1.000 and time score 0.965.
+
+### C++ Implementation
+
+Given that the implementation was largely done in Numpy and OpenCV2, we attempted to speed things up using a C++ translation of the Python implementation.
+
+Numpy operations could be easily replicated in C++ STL, while OpenCV2 has a C++ equivalent library (`#include <opencv2/opencv.hpp>`). The translation of `surprise_manager.py` was therefore fairly straightforward.
+
+There were then two options for serving, either using a Python binding for C++, or to write a HTTP server for serving in C++. We decided to go with the latter to reduce the number of dependencies and for speed. For this, [Crow](https://crowcpp.org/master/) was used as the HTTP server of choice. With more time, it is possible that a custom, stripped-down HTTP server could be written specifically to serve requests very quickly, but due to limited time, this was not explored.
+
+As further optimizations, certain compile flags were used. They are listed below:
+
+| Flag | Description |
+| - | - |
+| -O3	| Enables aggressive optimizations (inlining, vectorization, etc.), more than -O2. |
+|-march=native | Targets the current CPU architecture for maximum performance. Enables all CPU-specific instruction sets (like SSE4, AVX, etc.) available on the host machine.|
+| -funroll-loops | Tries to unroll loops to reduce overhead from branches and improve instruction-level parallelism. |
+| -flto | Enables Link Time Optimization (LTO). Optimizes across translation units at link time, improving inlining and dead code removal. |
+| -fomit-frame-pointer | Omits the frame pointer for functions that do not need it. Frees up a register and slightly improves performance (at the cost of harder debugging). |
+
+Obviously, other optimizations could also be used, but there was insufficient time to implement these:
+* There is probably some [hackish Single-instruction, multiple-data (SIMD) optimizations](https://codeforces.com/blog/entry/98594) that could speed up the code;
+* Profiling should have been done to identify the bottlenecks;
+* Some embarrassingly nested loops could probably have been parallelized;
+* Some other flags could have been used (e.g. `-Ofast, -fno-signed-zeros, -fno-trapping-math`);
+* Profile-Guided Optimisations (PGO) in GCC to boost performance;
+* And probably many other techniques to speed things up...
+
+Nevertheless, the C++ container submitted ended up having the exact same speed (0.965) as the fastest Python submission, likely because the Python libraries used were already optimized with C / C++ underlying libraries. It was nevertheless an interesting exercise and raises the possibility of using C++ for inference for future iterations of BrainHack. (To our knowledge, this has been the first fully C++ solution submitted for recent BrainHacks.)
 
 ---
 
