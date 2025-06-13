@@ -95,7 +95,7 @@ We theorize that our subpar semi-finals showing was due to the fact that:
 
 It is interesting to note that the reinforcement learning scores will not be introduced here, because the variance in scores would be very high between different submissions. Strategies to mitigate this during qualifiers and semi-finals/finals respectively would be discussed in the RL section.
 
-[^2]: This was achieved via an unconventional technique, which will be elaborated on, below, hence, the semi-final model would be significantly different.
+[^2]: This was achieved via an unconventional technique, which will be elaborated on, [below](#qualifiers-method), hence, the semi-final model would be significantly different.
 [^3]: This was achieved using hardware-specific TensorRT optimizations. However, since semi-final participant servers were built on a 5070Ti architecture, which we do not have access to, we ended up switching to a Pytorch implementation with a slightly lower, but comparable speed score.
 [^4]: C++ and Python implementations ended up having the exact same accuracy / speed combination, to 3 significant figures.
 
@@ -328,6 +328,10 @@ For docTR, text recognition has to be fine-tuned on images of **words** while wi
 The generation and preperation of datasets can be found in the following files:
 - [docTR](ocr/doctr/train/data_prep/dataset_prep.ipynb) 
 - [paddleocr](ocr/paddle/train/dataset_prep.ipynb)
+
+### Qualifiers Method
+
+During the qualifiers, it was discovered that the dataset provided contained only 5 ground truths. We hypothesized that the evaluation set was similar. After it was verified with a few submissions, we decided it was possible to return a fully correct answer by only conducting OCR on the first line and matching it to the closest ground truth. To speed up inferencing, we cropped the image from 200 pixels on the y-axis to 1/6 of its original height. This method led to a higher accuracy and speed score for the qualifiers and is not representative of the actual model performance for OCR. The implementation of this method is found [here](ocr/paddle/srcs/src-cheese/). 
 
 
 ## Hardware Used
