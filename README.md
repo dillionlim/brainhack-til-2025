@@ -337,13 +337,19 @@ The generation and preperation of datasets can be found in the following files:
 
 ### Qualifiers Method
 
-During the qualifiers, it was discovered that the dataset provided contained only 5 ground truths. We hypothesized that the evaluation set was similar. After it was verified with a few submissions, we decided it was possible to return a fully correct answer by only conducting OCR on the first line and matching it to the closest ground truth. To speed up inferencing, we cropped the image from 200 pixels on the y-axis to 1/6 of its original height. This method led to a higher accuracy and speed score for the qualifiers and is not representative of the actual model performance for OCR. The implementation of this method is found [here](ocr/paddle/srcs/src-cheese/). 
+During the qualifiers, it was discovered that the dataset provided contained only 5 ground truths. We hypothesized that the evaluation set was similar. After it was verified with a few submissions, we decided it was possible to return a fully correct answer by only conducting OCR on the first line and matching it to the closest ground truth. To speed up inferencing, we cropped the image from 200 pixels on the y-axis to $\frac{1}{6}$ of its original height. This method led to a higher accuracy and speed score for the qualifiers and is not representative of the actual model performance for OCR. The implementation of this method is found [here](ocr/paddle/srcs/src-cheese/). 
 
 ---
 
 ## RL
 
 To be done
+
+### Qualifiers Method
+
+It was discovered pretty early on that the submissions were non-deterministic, and different submissions gave very large variances in scores. Therefore, we wrote a script to automatically and continuously submit a model in order to obtain a high RL score.
+
+Furthermore, the scouts used in qualifiers were not very well-trained, therefore, the `helvetica` model was sufficient to capture all scouts consistently most of the time. It was therefore chosen to be used as the guard model for submissions.
 
 ---
 
