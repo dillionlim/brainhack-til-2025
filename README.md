@@ -9,7 +9,7 @@
   * [Exploratory Data Analysis](#exploratory-data-analysis-eda)
   * [Denoising](#denoising)
   * [Training](#training)
-    * [Training Attempt(Whisper, Denoising)](#training-attempt-whisper-denoising)
+    * [Training Attempt (Whisper, Denoising)](#training-attempt-whisper-denoising)
     * [Training (Parakeet)](#training-parakeet)
   * [Hyperparameters](#hyperparameters)
   * [Inference](#inference)
