@@ -96,6 +96,8 @@ It is interesting to note that the reinforcement learning scores will not be int
 [^3]: This was achieved using hardware-specific TensorRT optimizations. However, since semi-final participant servers were built on a 5070Ti architecture, which we do not have access to, we ended up switching to a Pytorch implementation with a slightly lower, but comparable speed score.
 [^4]: C++ and Python implementations ended up having the exact same accuracy / speed combination, to 3 significant figures.
 
+---
+
 ## ASR
 
 As with all previous iterations of BrainHack TIL-AI, ASR has traditionally always been one of the given tasks. However, the ASR task this year, commendably, seems to be significantly noisier, leading to a wider spread of scores.
@@ -227,6 +229,13 @@ The only optimization done was to conduct batch inference in batches of 4 (since
 * Spell checking with standard models or sanity checking with a LLM were considered, however, it was deemed that they would decrease the speed score too much, and were therefore not used. 
 * It might be interesting to attempt to train it on a denoised dataset to see the results, or implement k-fold cross validation to improve robustness.
 
+---
+
+## CV
+
+To be done
+
+---
 
 ## OCR
 
@@ -330,6 +339,19 @@ The generation and preperation of datasets can be found in the following files:
 
 During the qualifiers, it was discovered that the dataset provided contained only 5 ground truths. We hypothesized that the evaluation set was similar. After it was verified with a few submissions, we decided it was possible to return a fully correct answer by only conducting OCR on the first line and matching it to the closest ground truth. To speed up inferencing, we cropped the image from 200 pixels on the y-axis to 1/6 of its original height. This method led to a higher accuracy and speed score for the qualifiers and is not representative of the actual model performance for OCR. The implementation of this method is found [here](ocr/paddle/srcs/src-cheese/). 
 
+---
+
+## RL
+
+To be done
+
+---
+
+## Surprise
+
+To be done
+
+---
 
 ## Hardware Used
 
