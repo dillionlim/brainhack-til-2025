@@ -36,6 +36,18 @@
   * [Overall Analysis](#overall-analaysis)
   * [Qualifiers Method](#qualifiers-method-1)
 * [Surprise Task](#surprise)
+  * [Initial Exploration](#initial-exploration)
+  * [Analysis](#analysis)
+    * [Mean Squared Error (MSE)](#mean-squared-error-mse)
+    * [Structural Similarity Index Measure (SSIM)](#structural-similarity-index-measure-ssim)
+    * [Comparison](#comparison)
+  * [Initial naive implementation of SSIM](#initial-naive-implementation-of-ssim)
+  * [Beam Search](#beam-search)
+    * [Composite Similarity Matrix](#composite-similarity-matrix)
+    * [Conducting Beam Search and Path-Pruning](#conducting-beam-search-and-path-pruning)
+  * [Travelling Salesman Problem (TSP)](#travelling-salesman-problem-tsp)
+  * [Putting it all together](#putting-it-all-together)
+  * [C++ Implementation](#c-implementation)
 * [Hardware used](#hardware-used)
 * [Final words](#final-words)
 <!-- TOC -->
@@ -710,7 +722,7 @@ The first slice is determined similarly to the original solution.
 
 The core idea of beam search is that at each step, we will try to extend all current partial paths by one more unused slice. That is, we will generate all possible valid extensions of the current beam. We represent the currently used slices in a bitmask, where $1 << x$ indicates that slice $x$ is already used in the current beam so far. We also maintain the current beam path so as to reconstruct that path later on.
 
-For each depth $d = 1$ to $N-1$, where $N = 15$ in the training set, we will generate $\text{beam\_width} \times (N - d)$ new extended paths based on the remaining slices. Of these new extended paths, they will be pruned such that only the top ${beam\_width}$ candidates will remain.
+For each depth $d = 1$ to $N-1$, where $N = 15$ in the training set, we will generate $\text{BeamWidth} \times (N - d)$ new extended paths based on the remaining slices. Of these new extended paths, they will be pruned such that only the top $\text{BeamWidth}$ candidates will remain.
 
 At the last step (after $N-1$ extensions), each item in beam is a complete permutation (i.e. length $N$). We simply choose the one with the best total score.
 
