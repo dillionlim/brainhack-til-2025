@@ -667,7 +667,7 @@ $$SSIM(A,B)=\frac{(2\mu_A\mu_B+C_1)(2\sigma_{AB}+C_2)}{(\mu_A^2+\mu_B^2+C_1)(\si
 where:
 * $\mu_X$ is the pixel sample mean of matrix $X$;
 * $\sigma_X^2$ is the pixel sample mean of $X$;
-* $\sigma_{XY}$ is the sample covariance of $X$ and $Y;
+* $\sigma_{XY}$ is the sample covariance of $X$ and $Y$;
 * $c_1=(k_1L)^{2}$ and $c_{2}=(k_2L)^{2}$ are two variables to stabilize the division with a weak denominator, and where;
 * $L = 2^{BPP} - 1$ is the dynamic range of the pixel-values and $BPP$ is the bits-per-pixel;
 * By default, $k_1 = 0.01$ and $k_2 = 0.03$.
@@ -754,7 +754,7 @@ To be done
 
 ### Putting it all together
 
-At the point of us asking, the organisers chose not to reveal that the final test dataset would have exactly $N = 15$ slices. Therefore, we went with a hybrid implementation, given that the TSP solution had a time complexity of $O(N^2 \times 2^N)$, and would time out for larger values of $N$. We implemented a low-$N$-regime and high-$N$-regime solution, where TSP would be used for $N \leq 20$ and beam search would be used for $N > 20$.
+At the point of us asking, the organisers chose not to reveal that the final test dataset would have exactly $N = 15$ slices. Therefore, we went with a hybrid implementation, given that the TSP solution had a time complexity of $O(N^2 \times 2^N)$, and would time out for larger values of $N$. We implemented a low-N-regime and high-N-regime solution, where TSP would be used for $N \leq 20$ and beam search would be used for $N > 20$.
 
 We therefore submitted a final solution for this with accuracy 1.000 and time score 0.965.
 
