@@ -303,69 +303,69 @@ Not all of the mirrored 'ghost text' were able to be removed. As such, the text 
 **CLAHE** (Contrast Limited Adaptive Histogram Equalization) was tried as well to enhance constrast and **Laplacian** for edge highlighting. Although it made the text in the images look slightly clearer, the score did not improve with it. 
 
 ```python
-     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-     contrast = clahe.apply(denoised)
-     blurred = cv2.GaussianBlur(contrast, (0, 0), 1.0)
-     sharpened = cv2.addWeighted(contrast, 1.2, blurred, -0.2, 0)
- 
-     # Edge highlighting (using Laplacian)
-     edges = cv2.Laplacian(sharpened, cv2.CV_8U, ksize=3)
-     img = cv2.addWeighted(sharpened, 1.0, edges, 0.2, 0)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    contrast = clahe.apply(denoised)
+    blurred = cv2.GaussianBlur(contrast, (0, 0), 1.0)
+    sharpened = cv2.addWeighted(contrast, 1.2, blurred, -0.2, 0)
+
+    # Edge highlighting (using Laplacian)
+    edges = cv2.Laplacian(sharpened, cv2.CV_8U, ksize=3)
+    img = cv2.addWeighted(sharpened, 1.0, edges, 0.2, 0)
 ```
 
-**FFT Bandpass Filtering** was applied in an attempt to suppress ghost text artifacts by removing specific frequency components from the image. While this method visually reduced the prominence of ghost text, it also had unintended side effects on the quality of the remaining text. Specifically, although the filtered image appeared clearer to the human observer, the filtering process attenuated not only the unwanted frequencies associated with the ghosting but also those crucial for preserving sharp text edges and fine details. As a result, the boundaries and features of the actual characters became less distinct and effectively “smearing” or blurring the edges. This degradation in edge clarity and local contrast impaired the OCR model’s ability to accurately segment and recognize characters, leading to a measurable decrease in recognition accuracy after preprocessing with the bandpass filter. This suggests that while FFT-based filtering can target and remove certain structured noise, it could have suppress high-frequency information essential for reliable character recognition.
-We implemented a soft bandpass filter because through experimenting with this preprocessing step, we observed that hard cutoffs (hard bandpass filter) will result in something that we later realise is called **ringing artificacts** known as Gibbs phenomenon when inverse FFT is performed. Hence, to reduce this we used a soft mask () instead, to ensure that the transition from pass to stop bands is gradual, minimising such artifacts and producing more natural filtered images.
+**FFT Bandpass Filtering** was applied in an attempt to suppress 'ghost text' artifacts by removing specific frequency components from the image. While this method visually reduced the prominence of 'ghost text', it also had unintended side effects on the quality of the remaining text. Specifically, although the filtered image appeared clearer to the human observer, the filtering process attenuated not only the unwanted frequencies associated with the 'ghosting' but also those crucial for preserving sharp text edges and fine details. As a result, the boundaries and features of the actual characters became less distinct and effectively “smearing” or blurring the edges. This degradation in edge clarity and local contrast impaired the OCR model’s ability to accurately segment and recognize characters, leading to a measurable decrease in recognition accuracy after preprocessing with the bandpass filter. This suggests that while FFT-based filtering can target and remove certain structured noise, it could have suppress high-frequency information essential for reliable character recognition.
+We implemented a soft bandpass filter because through experimenting with this preprocessing step, we observed that hard cutoffs (hard bandpass filter) will result in something that we later realise is called **ringing artifacts** known as Gibbs phenomenon when inverse FFT is performed. Hence, to reduce this we used a soft mask instead, to ensure that the transition from pass to stop bands is gradual, minimising such artifacts and producing more natural filtered images.
 
 Below is our implementation of the FFT Bandpass Filter
 ```python
-   def fft_bandpass_filter(self, img, low_cut=0.5, high_cut=300):
-       # Ensure grayscale
-       if len(img.shape) == 3:
-           img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-       h, w = img.shape
- 
-       # FFT
-       f = np.fft.fft2(img)
-       fshift = np.fft.fftshift(f)
- 
-       # Create bandpass mask
-       crow, ccol = h // 2, w // 2
-       Y, X = np.ogrid[:h, :w]
-       distance = np.sqrt((Y - crow)**2 + (X - ccol)**2)
- 
-       def soft_bandpass_mask(h, w, low_cut, high_cut):
-           crow, ccol = h // 2, w // 2
-           Y, X = np.ogrid[:h, :w]
-           distance = np.sqrt((Y - crow)**2 + (X - ccol)**2)
-           low_pass = np.exp(-((distance / high_cut)**2))
-           high_pass = 1 - np.exp(-((distance / low_cut)**2))
-           return low_pass * high_pass
- 
-       mask = soft_bandpass_mask(h, w, low_cut, high_cut)
- 
-       # Apply mask
-       fshift_filtered = fshift * mask
- 
-       # Inverse FFT
-       f_ishift = np.fft.ifftshift(fshift_filtered)
-       img_back = np.fft.ifft2(f_ishift)
-       img_back = np.abs(img_back)
- 
-       # Normalise to uint8
-       img_back = np.clip(img_back, 0, 255)
-       img_back = img_back / img_back.max() * 255
-       img_back = img_back.astype(np.uint8)
- 
-       bgr_image =  cv2.cvtColor(img_back, cv2.COLOR_GRAY2BGR)
-       inverted_image = cv2.bitwise_not(bgr_image)
-       inverted_grayscale_image = cv2.cvtColor(inverted_image, cv2.COLOR_BGR2GRAY)
- 
-       return inverted_image.astype(np.uint8)
+    def fft_bandpass_filter(self, img, low_cut=0.5, high_cut=300):
+        # Ensure grayscale
+        if len(img.shape) == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        h, w = img.shape
+    
+        # FFT
+        f = np.fft.fft2(img)
+        fshift = np.fft.fftshift(f)
+    
+        # Create bandpass mask
+        crow, ccol = h // 2, w // 2
+        Y, X = np.ogrid[:h, :w]
+        distance = np.sqrt((Y - crow)**2 + (X - ccol)**2)
+    
+        def soft_bandpass_mask(h, w, low_cut, high_cut):
+            crow, ccol = h // 2, w // 2
+            Y, X = np.ogrid[:h, :w]
+            distance = np.sqrt((Y - crow)**2 + (X - ccol)**2)
+            low_pass = np.exp(-((distance / high_cut)**2))
+            high_pass = 1 - np.exp(-((distance / low_cut)**2))
+            return low_pass * high_pass
+    
+        mask = soft_bandpass_mask(h, w, low_cut, high_cut)
+    
+        # Apply mask
+        fshift_filtered = fshift * mask
+    
+        # Inverse FFT
+        f_ishift = np.fft.ifftshift(fshift_filtered)
+        img_back = np.fft.ifft2(f_ishift)
+        img_back = np.abs(img_back)
+    
+        # Normalise to uint8
+        img_back = np.clip(img_back, 0, 255)
+        img_back = img_back / img_back.max() * 255
+        img_back = img_back.astype(np.uint8)
+    
+        bgr_image =  cv2.cvtColor(img_back, cv2.COLOR_GRAY2BGR)
+        inverted_image = cv2.bitwise_not(bgr_image)
+        inverted_grayscale_image = cv2.cvtColor(inverted_image, cv2.COLOR_BGR2GRAY)
+    
+        return inverted_image.astype(np.uint8)
 ```
 
-Conducting preprocessing using Deep Learning models such as [DocDiff](https://github.com/Royalvice/DocDiff) and [DocEnTR](https://github.com/dali92002/DocEnTR) were explored as well, mainly to better remove the ghost text, but we did not end up moving forward with them due to the following factors:
-1. Taking the noisy images as input, these models were not good at reconstructing the denoised images out-of-the-box, and likely required extra training which greatly increased the efforts of implementing such a preprocessing step
-2. The inference speed of these models were also a problem as using them would have costed us greatly on our speed score, which might have resulted in us decreasing our overall score even if our accuracy has increased
+Conducting preprocessing using Deep Learning models such as [DocDiff](https://github.com/Royalvice/DocDiff) and [DocEnTR](https://github.com/dali92002/DocEnTR) were explored as well, mainly to better remove the 'ghost text', but we did not end up moving forward with them due to the following factors:
+1. Taking the noisy images as input, these models were not good at reconstructing the denoised images out-of-the-box, and likely required extra training which greatly increased the efforts of implementing such a preprocessing step.
+2. The inference speed of these models were also a problem as using them would have an adverse impact on our speed score, which might have resulted in a decrease in overall score even if the accuracy increased.
 
 ### Postprocessing
 
@@ -397,7 +397,7 @@ A faster algorithmic method in `symspellpy` was tried. However, despite adjustin
 ### Models Tried
 
 A variety of baseline models were tried. Some such as pytesseract, surya-ocr and trocr were able to achieve decent accuracy but were extremely slow (surya-ocr timed out in the submission). 
-Other models such as EasyOCR and calamariOCR were tried, but led to underwhelming and disappointing CERs (e.g. For EasyOCR many combinations of values were attempted for several parameters including, `decoder`, `contrast-ths`, `beamWidth`, but none of the combinations yielded ecent results).
+Other models such as EasyOCR and calamariOCR were tried, but led to underwhelming and disappointing CERs (e.g. For EasyOCR many combinations of values were attempted for several parameters including, `decoder`, `contrast-ths`, `beamWidth`, but none of the combinations yielded decent results).
 PaddleOCR and docTR were able to achieve high accuracy and was much faster. As docTR had higher accuracy and slightly better speed, it was used for the semi-finals.
 
 | Detector Model | Dataset | Hyperparameters | Recogniser Model | Dataset | Hyperparameters | Score | Speed |
