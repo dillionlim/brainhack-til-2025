@@ -302,7 +302,7 @@ Not all of the mirrored 'ghost text' were able to be removed. As such, the text 
 
 **CLAHE** (Contrast Limited Adaptive Histogram Equalization) was tried as well to enhance constrast and **Laplacian** for edge highlighting. Although it made the text in the images look slightly clearer, the score did not improve with it. 
 
-```
+```python
      clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
      contrast = clahe.apply(denoised)
      blurred = cv2.GaussianBlur(contrast, (0, 0), 1.0)
@@ -317,7 +317,7 @@ Not all of the mirrored 'ghost text' were able to be removed. As such, the text 
 We implemented a soft bandpass filter because through experimenting with this preprocessing step, we observed that hard cutoffs (hard bandpass filter) will result in something that we later realise is called **ringing artificacts** known as Gibbs phenomenon when inverse FFT is performed. Hence, to reduce this we used a soft mask () instead, to ensure that the transition from pass to stop bands is gradual, minimising such artifacts and producing more natural filtered images.
 
 Below is our implementation of the FFT Bandpass Filter
-```
+```python
    def fft_bandpass_filter(self, img, low_cut=0.5, high_cut=300):
        # Ensure grayscale
        if len(img.shape) == 3:
