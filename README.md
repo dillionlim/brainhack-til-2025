@@ -700,28 +700,39 @@ $$\text{sim} = \alpha \cdot S_{raw} + \beta \cdot S_{bin} + \gamma \cdot CC_{raw
 where:
 * $S_{raw}$ is the SSIM matrix for all raw right slice-left slice pairs. That is, for all pairs of slices with indices $(i, j)$,
 
-$$S_{raw,i,j}=SSIM(\text{raw}_{i,right},\text{raw}_{j,left})$$
+```math
+S_{raw,i,j}=SSIM(\text{raw}_{i,right},\text{raw}_{j,left})
+```
 
 * $S_{bin}$ is the SSIM matrix for all binarized right slice-left slice pairs. In practice, the computation is identical to the previous matrix, except that all pixels are assigned to either white or black, thresholded with a pixel value of 128. That is, for all pairs of slices with indices $(i, j)$,
 
-$$S_{bin,i,j}=SSIM(\text{bin}_{i,right},\text{bin}_{j,left})$$
+```math
+S_{bin,i,j}=SSIM(\text{bin}_{i,right},\text{bin}_{j,left})
+```
 
 * $CC_{raw}$ is the raw cross-correlation matrix for all raw right slice-left slice pairs. That is, for all pairs of slices with indices $(i, j)$, 
 
-$$CC_{i,j}=\text{CrossCorr}(\text{raw}_{i,right},\text{raw}_{j,left})$$
+
+```math
+CC_{i,j}=\text{CrossCorr}(\text{raw}_{i,right},\text{raw}_{j,left})
+```
 
 * Cross-correlation, or $\text{CrossCor}$ was just the cosine similarity between the mean-centered vectors. That is,
 
-$$\text{CrossCorr}(r_i, \ell_j) = \frac{(r_i - \bar{r}_i)^\top (\ell_j - \bar{\ell}_j)}{\|r_i - \bar{r}_i\|_2 \cdot \|\ell_j - \bar{\ell}_j\|_2},$$
+```math
+\text{CrossCorr}(r_i, \ell_j) = \frac{(r_i - \bar{r}_i)^\top (\ell_j - \bar{\ell}_j)}{\text{\textbardbl}r_i - \bar{r}_i\text{\textbardbl}_2 \cdot \text{\textbardbl}\ell_j - \bar{\ell}_j\text{\textbardbl}_2},
+```
 
 where:
 
 * $H$ is the number of rows of each slice;
 * $\bar{x}_i$ is the mean-centered vector, defined by 
 
-$$\bar{x}_i = \frac{1}{H} \sum_{k=1}^{H} x_i[k];$$
+```math
+\bar{x}_i = \frac{1}{H} \sum_{k=1}^{H} x_i[k];
+```
 
-* $\|x_i\|_2$ is the Euclidean norm.
+* $\text{\textbardbl}x_i\text{\textbardbl}_2$ is the Euclidean norm.
 
 For our usecase, we used hyperparameter values $\alpha = 0.6, \beta = 0.3, \gamma = 0.1$.
 
