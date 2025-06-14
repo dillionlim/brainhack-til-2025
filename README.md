@@ -720,7 +720,7 @@ CC_{i,j}=\text{CrossCorr}(\text{raw}_{i,right},\text{raw}_{j,left})
 * Cross-correlation, or $\text{CrossCor}$ was just the cosine similarity between the mean-centered vectors. That is,
 
 ```math
-\text{CrossCorr}(r_i, \ell_j) = \frac{(r_i - \bar{r}_i)^\top (\ell_j - \bar{\ell}_j)}{||r_i - \bar{r}_i||_2 \cdot ||\ell_j - \bar{\ell}_j||_2},
+\text{CrossCorr}(r_i, \ell_j) = \frac{(r_i - \bar{r}_i)^\top (\ell_j - \bar{\ell}_j)}{\lVert r_i - \bar{r}_i\rVert_2 \cdot \lVert \ell_j - \bar{\ell}_j \rVert_2},
 ```
 
 where:
@@ -732,7 +732,7 @@ where:
 \bar{x}_i = \frac{1}{H} \sum_{k=1}^{H} x_i[k];
 ```
 
-* $||x_i||_2$ is the Euclidean norm.
+* $\lVert x_i \rVert_2$ is the Euclidean norm.
 
 For our usecase, we used hyperparameter values $\alpha = 0.6, \beta = 0.3, \gamma = 0.1$.
 
