@@ -680,7 +680,39 @@ Tuning hyperparameters ($k_1$ and $k_2$) revealed that higher values of $k_2$ we
 
 ### Beam Search
 
-To be done
+#### Composite Similarity Matrix
+
+The key idea here is that a composite similarity matrix, $\text{sim}$ was calculated where
+$$\text{sim} = \alpha \cdot S_{raw} + \beta \cdot S_{bin} + \gamma \cdot CC_{raw}$$
+
+where:
+* $S_{raw}$ is the SSIM matrix for all raw right slice-left slice pairs. That is, for all pairs of slices with indices $(i, j)$,
+$$S_{raw,i,j}=SSIM(\text{raw}_{i,right},\text{raw}_{j,left})$$
+* $S_{bin}$ is the SSIM matrix for all binarized right slice-left slice pairs. In practice, the computation is identical to the previous matrix, except that all pixels are assigned to either white or black, thresholded with a pixel value of 128. That is, for all pairs of slices with indices $(i, j)$,
+$$S_{bin,i,j}=SSIM(\text{bin}_{i,right},\text{bin}_{j,left})$$
+* $CC_{raw}$ is the raw cross-correlation matrix for all raw right slice-left slice pairs. That is, for all pairs of slices with indices $(i, j)$, 
+$$CC_{i,j}=\text{CrossCorr}(\text{raw}_{i,right},\text{raw}_{j,left})$$
+* Cross-correlation, or $\text{CrossCor}$ was just the cosine similarity between the mean-centered vectors. That is,
+$$\text{CrossCorr}(r_i, \ell_j) = \frac{(r_i - \bar{r}_i)^\top (\ell_j - \bar{\ell}_j)}{\|r_i - \bar{r}_i\|_2 \cdot \|\ell_j - \bar{\ell}_j\|_2},$$
+where:
+
+* $H$ is the number of rows of each slice;
+* $\bar{x}_i$ is the mean-centered vector, defined by $$\bar{x}_i = \frac{1}{H} \sum_{k=1}^{H} x_i[k];$$
+* $\|x_i\|_2$ is the Euclidean norm.
+
+For our usecase, we used hyperparameter values $\alpha = 0.6, \beta = 0.3, \gamma = 0.1$.
+
+As a result, we get a composite similarity matrix, which effectively represents a directed weighted graph, where $\text{sim}_{i,j}$ is a representation of the similarity and continuity for the transition from slice $i \to j$. 
+
+#### Conducting Beam Search and Path-Pruning
+
+The first slice is determined similarly to the original solution.
+
+The core idea of beam search is that at each step, we will try to extend all current partial paths by one more unused slice. That is, we will generate all possible valid extensions of the current beam. We represent the currently used slices in a bitmask, where $1 << x$ indicates that slice $x$ is already used in the current beam so far. We also maintain the current beam path so as to reconstruct that path later on.
+
+For each depth $d = 1$ to $N-1$, where $N = 15$ in the training set, we will generate $\text{beam\_width} \times (N - d)$ new extended paths based on the remaining slices. Of these new extended paths, they will be pruned such that only the top ${beam\_width}$ candidates will remain.
+
+At the last step (after $N-1$ extensions), each item in beam is a complete permutation (i.e. length $N$). We simply choose the one with the best total score.
 
 ### Travelling Salesman Problem (TSP)
 
