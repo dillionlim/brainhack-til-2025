@@ -56,7 +56,7 @@
 TIL-AI 2025 comprised of 3 standard tasks, 1 surprise task (introduced on day 1 of the semi-finals, with approximately 12 hours to complete the task) and an overarching reinforcement learning (RL) task:
 * **Automatic speech recognition (ASR)** \
     Convert noisy, accented audio into a text transcript.
-* **Compute Vision (CV)** \
+* **Computer Vision (CV)** \
     Detect and classify (sometimes) small objects in a noisy image, with classes chosen from a known, target list.
 * **Optical Character Recognition (OCR)** \
     Transcribe text from a noisy image of a document with varied fonts and layouts.
@@ -70,7 +70,7 @@ Each match is played by four teams, and consists of four rounds, such that each 
 As a scout, the aim is to:
 
 * Avoid capture by the guards (-500 points),
-* Collect reconnaissance points (80% distribution) placed around the map (+10 point), and
+* Collect reconnaissance points (80% distribution) placed around the map (+10 points), and
 * Complete challenges located at mission points in the map (up to +50 points for semi-finals and finals, guaranteed +50 points for qualifiers).
 
 At mission points (for semi-finals and finals), a scout will receive 5 missions, chosen from the above 4 tasks with equal probability. You can receive any where from 0 to 10 points for each task, corresponding to the accuracy of your model for the given task.
@@ -543,7 +543,9 @@ Furthermore, the ruleset for the escaper could be tuned to avoid unnecessary esc
 
 ### Algorithmic Guard Models
 
-To be done
+#### Basic Prowler `helvetica`
+
+As a basic baseline for qualifiers, we used a basic A* algorithm to navigate between the map's four corners to search for the scout and head directly towards the scout if seen.
 
 ### RL Scout Models
 
@@ -561,7 +563,7 @@ To be done
 
 It was discovered pretty early on that the submissions were non-deterministic, and different submissions gave very large variances in scores. Therefore, we wrote a script to automatically and continuously submit a model in order to obtain a high RL score.
 
-Furthermore, the scouts used in qualifiers were not very well-trained, therefore, the `helvetica` model was sufficient to capture all scouts consistently most of the time. It was therefore chosen to be used as the guard model for submissions.
+Furthermore, the scouts used in qualifiers were not very well-trained, therefore, the `helvetica` model was sufficient to capture all scouts more often than not. It was therefore chosen to be used as the guard model for submissions.
 
 ---
 
