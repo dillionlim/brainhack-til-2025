@@ -3,18 +3,24 @@
 
 # The base image. Using a regular Python base because RL agents don't typically
 # require much GPU. This will speed up your evaluation.
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Configures settings for the image.
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_ROOT_USER_ACTION=ignore
-WORKDIR /workspace
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
 
 # Installs your dependencies.
 RUN pip install -U pip
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip uninstall -y sb3-contrib
+RUN pip uninstall -y stable-baselines3
 
 # Copies your source files.
 COPY src .

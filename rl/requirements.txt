@@ -1,4 +1,7 @@
 # Dependencies for RL.
 
-fastapi
-uvicorn[standard]
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+stable-baselines3==2.6.0
+sb3-contrib==2.6.0
