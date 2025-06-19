@@ -15,6 +15,14 @@
   * [Inference](#inference)
   * [Additional Steps to Improve](#additional-steps-to-improve)
 * [CV](#cv)
+  * [Summary of Results](#summary-of-results)
+  * [Data Augmentation](#data-augmentation)
+  * [Potential SAHI Usage](#potential-sahi-usage)
+  * [Two-Stage Approach](#two-stage-approach)
+  * [Freeze Points](#freeze-points)
+  * [Best Single Model](#best-single-model)
+  * [Weighted Boxes Fusion (WBF)](#weighted-boxes-fusion-wbf)
+  * [Potential Improvements](#potential-improvements)
 * [OCR](#ocr)
   * [Preprocessing](#preprocessing)
   * [Postprocessing](#postprocessing)
@@ -263,7 +271,85 @@ The only optimization done was to conduct batch inference in batches of 4 (since
 
 ## CV
 
-To be done
+The CV task was a simple object detection task, with objects from [18 pre-defined classes](https://github.com/til-ai/til-25/wiki/Challenge-specifications#target-list). The training dataset provided included 20000 JPEG images of dimensions 1920 (W) × 1080 (H).
+
+### Summary of Results
+
+| Model | Hyperparameters and Information | Score | Speed |
+| - | - | - | - |
+| YOLOv8m (Qualifiers) | freeze points at freeze=8,0 | 0.532 | 0.947 |
+| YOLOv8m | freeze=10,6,3,0 | 0.578 | - |
+| YOLOv8l (Best single model) | see [best single model](#best-single-model) | 0.584 | 0.853 (before optimizations) |
+| Weighted Boxes Fusion | 4 model ensemble (see [WBF](#weighted-boxes-fusion-wbf)) | 0.615 | 0.892 |
+
+### Data Augmentation
+
+It is interesting to note that while the provided training data for ASR and OCR already included various forms of noise that was (assumed to be) representative of the hidden test set, the CV data provided was clean, even though the test set was known to contain noise. As such, we used data augmentation during training.
+
+We used the following augmentations for all finals models training:
+
+```python
+T = A.Compose([
+    A.GaussNoise(var_limit=2500, p=0.5),
+    A.ISONoise(p=0.5),
+    A.Blur(p=0.15),
+    A.MedianBlur(p=0.15),
+    A.ToGray(p=0.1),
+    A.CLAHE(p=0.15),
+    A.RandomBrightnessContrast(p=0.6),
+    A.RandomGamma(p=0.2),
+    A.ImageCompression(quality_lower=75, p=0.5),
+])
+```
+
+### Potential SAHI Usage
+
+Moreover, the objects were small relative to the size of the image, which increased detection difficulty. In theory, [SAHI](https://github.com/obss/sahi) would have been an effective technique to improve detection accuracy. However, we did not manage to improve our score using it, likely due to an error in training data preparation (See [Potential Improvements](#potential-improvements)).
+
+### Two-Stage Approach
+
+We also noticed that three of the classes overlapped with the 80 COCO object categories (*car*, *bus*, *truck*), while most of the others (less *missile*, *tank*, and perhaps *helicopter*) could be considered a subclass of either *airplane* or *boat*, both of which are COCO object categories. This meant that fine-tuning a model pre-trained on the COCO dataset would yield significant benefits.
+
+This also motivated our initial two-stage approach of first detecting superclasses (e.g. *airplane*, *boat*), then using separate image classifiers for each superclass to perform fine-grained image classification on the cropped out object, upscaled using [SwinIR-M](https://github.com/JingyunLiang/SwinIR) (realSR_BSRGAN_DFO_s64w8_SwinIR-M_x4_GAN). However, this approach proved to be worse in terms of both accuracy and speed compared to a single detection + classification model. This was likely due to the classification models tried (ResNet-50, deit-small-patch16-224) overfitting easily on the limited number of unique template objects used to generate the training data.
+
+### Freeze Points
+
+Models pre-trained on the COCO dataset learn many features which are transferrable to the 18 object classes in the CV task. As such, layers in the detection model backbones were frozen to preserve the learned low-level features during the initial stages of training. These layers are gradually unfrozen in later stages of training as training loss stabilises.
+
+It is also interesting to note that simply averaging the weights of the same model, trained on the same data but at different stages of training yielded a higher accuracy that each of the individual models before averaging.
+
+### Best Single Model
+
+The best score we achieved using a single model was with YOLOv8l, yielding an accuracy of 0.584. 
+
+The model was trained on 14000 images from the original training dataset + 4000 self-generated synthetic images, all [augmented](#data-augmentation).
+
+Freeze points at 10, 7 and 4 layers were employed before fine-tuning the fully unfrozen model.
+
+| No. of Frozen Layers | Learning Rate | Epochs | Score |
+| - | - | - | - |
+| 10 | 1e-4 | 25 | 0.552 |
+| 7 | 6e-5 | 11 | 0.564 |
+| 4 | 3e-5 | 11 | 0.560 |
+| 0 | 1e-5 | 5 | 0.570 |
+
+![yolov8l_score_per_training_stage](/docs/cv/yolov8l_score_per_training_stage.png)
+
+By averaging the final fine-tuned weights with the weights of the model with 7 frozen layers, the resulting model achieved an accuracy of 0.584 on the hidden test set. 
+
+### Weighted Boxes Fusion (WBF)
+
+TODO
+
+### Potential Improvements
+
+1. Use larger models
+
+   Due to time constraints and hardward limitations, we were unable to test out larger models. However, using a larger model like [YOLOv6-L6](https://github.com/meituan/YOLOv6) would likely have improved or CV score significantly.
+   
+2. SAHI
+
+   When testing out SAHI, we used a model that was trained on cropped slices of the training images, which significantly increased false positives due to cut off objects in the training data. Instead, we should have directly used the detection models trained on the full images to perform inference on slices. Had this been done, it would likely have resulted in an increase in accuracy due to relatively small object sizes (of course, the trade-off in speed would need to be considered).
 
 ---
 
