@@ -341,6 +341,16 @@ By averaging the final fine-tuned weights with the weights of the model with 7 f
 
 TODO
 
+### Data Generation
+
+A custom dataset was also generated in an effort to prevent overfitting on the training data (implemented [here](cv/data-generation/generate.ipynb)). These were the steps taken:
+
+1. Background images and images of the targerts were webscrapped using the `bing_image_downloader` library. 
+2. As most images of the target objects had their own backgrounds, they were removed with the `rembg` library. 
+3. The background images were resized to `1920x1080` per the training data.   
+4. The objects (now with transparent background) were pasted on the background images. In the training data, air vehicles seem to be smaller in size compared to others and were harder to detect. As such, they were made to be smaller (2000-12000 pixel squares) compared to other vehicles (14000-30000 pixel squares).
+5. The images were augmented with the aforementioned augmentations.  
+
 ### Potential Improvements
 
 1. Use larger models
