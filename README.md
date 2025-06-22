@@ -643,6 +643,23 @@ Furthermore, the ruleset for the escaper could be tuned to avoid unnecessary esc
 
 As a basic baseline for qualifiers, we used a basic A* algorithm to navigate between the map's four corners to search for the scout and head directly towards the scout if seen.
 
+#### Greedily Estimating Scout Location
+
+We wanted the guard to prowl with purpose, so we estimated the probability of the scout being on each tile on each turn, which seemed like a budget alternative to tracking all possible scout paths.
+
+The scout is assumed to be on (0, 0) on turn 0, facing either vertically or horizontally.
+
+On any given turn, the probability on a tile depends only on the probabilities on the previous turn on all adjacent tiles not blocked by walls.
+
+Other information is represented as walls that appear and disappear across turns, including:
+- Tiles heard to be empty
+- Tiles seen with untouched rewards
+- Actual walls seen
+
+The probabilities across the entire map are recalculated from a convenient turn in the past, when new information is gained, including when the scout is actually heard.
+
+The algorithm uses A* to head to the tile with the highest calculated probability on every turn, so it never reaches its intended destination and recalculates its path every turn.
+
 ### RL Scout Models
 
 To be done
