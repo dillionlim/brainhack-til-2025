@@ -4,7 +4,7 @@
 * [Introduction](#introduction)
 * [Team Members (in alphabetical order)](#team-members-in-alphabetical-order)
 * [Achievements](#achievements)
-* [Final evaluation results](#final-evaluation-results)
+* [Evaluation Results](#evaluation-results-pre-semi-finals)
 * [ASR](#asr)
   * [Exploratory Data Analysis](#exploratory-data-analysis-eda)
   * [Denoising](#denoising)
@@ -39,9 +39,8 @@
   * [Breadcrumb Trails](#breadcrumb-trails)
   * [Algorithmic Scout Models](#algorithmic-scout-models)
   * [Algorithmic Guard Models](#algorithmic-guard-models)
-  * [RL Scout Models](#rl-scout-models)
-  * [RL Guard Models](#rl-guard-models)
-  * [Overall Analysis](#overall-analaysis)
+  * [Deep RL](#deep-rl)
+  * [Overall Analysis](#overall-analysis)
   * [Qualifiers Method](#qualifiers-method-1)
 * [Surprise Task](#surprise)
   * [Initial Exploration](#initial-exploration)
@@ -62,7 +61,7 @@
 
 ## Introduction
 TIL-AI 2025 comprised of 3 standard tasks, 1 surprise task (introduced on day 1 of the semi-finals, with approximately 12 hours to complete the task) and an overarching reinforcement learning (RL) task:
-* **Automatic speech recognition (ASR)** \
+* **Automatic Speech Recognition (ASR)** \
     Convert noisy, accented audio into a text transcript.
 * **Computer Vision (CV)** \
     Detect and classify (sometimes) small objects in a noisy image, with classes chosen from a known, target list.
@@ -238,7 +237,7 @@ In terms of a graph for the score against epochs, it looks like
 
 ![score_against_epochs](/docs/asr/score_against_epochs.png)
 
-COmparing this graph against [team 2B3Y's tuning](https://github.com/ThePyProgrammer/til-25-2b3y/tree/main/asr) yielding 0.98 on the hidden set, it is likely that 12 epochs was still underfitted, but no attempt was made to further improve the score due to time constraints.
+Comparing this graph against [team 2B3Y's tuning](https://github.com/ThePyProgrammer/til-25-2b3y/tree/main/asr) yielding 0.98 on the hidden set, it is likely that 12 epochs was still underfitted, but no attempt was made to further improve the score due to time constraints.
 
 ### Hyperparameters
 
@@ -373,7 +372,7 @@ The OCR task involves reading text in a scanned document. The scanned documents 
 
 ### Preprocessing
 
-To handle the augmentations and the layout, all images were preprocessed using **median blur** (to remove salt and pepper noise) and **OTSU thresholding** (to remove as much 'ghost text' as possible without degrading the original text too much). 
+To handle the augmentations and the layout, all images were preprocessed using **median blur** (to remove salt and pepper noise) and **Otsu's thresholding** (to remove as much 'ghost text' as possible without degrading the original text too much). 
 
 Final preprocessing pipeline:
 ```python
@@ -539,6 +538,8 @@ During the qualifiers, it was discovered that the dataset provided contained onl
 
 ## RL
 
+Read the [introduction](#introduction) again for a refresher on the RL task objectives.
+
 ### Remote RL repositories
 
 For more detailed RL model analysis, refer to our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed). For the simulated environment that we used to evaluate various models with convenience scripts, refer to our [RL model zoo](https://github.com/jxinnan/til-25-rl-zoo).
@@ -645,6 +646,8 @@ As a basic baseline for qualifiers, we used a basic A* algorithm to navigate bet
 
 #### Greedily Estimating Scout Location
 
+![Estimated Scout Locations]()
+
 We wanted the guard to prowl with purpose, so we estimated the probability of the scout being on each tile on each turn, which seemed like a budget alternative to tracking all possible scout paths.
 
 The scout is assumed to be on (0, 0) on turn 0, facing either vertically or horizontally.
@@ -660,15 +663,75 @@ The probabilities across the entire map are recalculated from a convenient turn 
 
 The algorithm uses A* to head to the tile with the highest calculated probability on every turn, so it never reaches its intended destination and recalculates its path every turn.
 
-### RL Scout Models
+##### Areas for Improvement
+
+![Estimated Scout Locations in Semi-Finals]()
+
+### Deep RL
+
+We trained two sets of scout agents&mdash;one for peacetime, and one for wartime, following the collector and escaper regimes in [Monte-Carlo Tree Search](#monte-carlo-tree-search-mcts). Although maximising rewards and escaping guards are indeed fairly distinct tasks, this separation for RL models was born out of necessity, after we unwisely spent too much time on perfecting the agents' behaviour when there are no guards.
+
+#### Multi-Agent RL?
+
+Instead of training against itself or other trained agents, we "embedded" all-seeing guards into the environment, who can always take the shortest path to the scout if you so desire. The user can control the probability that the guard would follow the shortest path on any given turn, allowing us to train progressively and perform a variety of evaluations.
+
+#### Model
+
+Most of our semi-finals models use Stable Baselines3's [Deep Q Network (DQN)](https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html), while some escaper models used [QR-DQN](https://sb3-contrib.readthedocs.io/en/master/modules/qrdqn.html).
+
+QR-DQN had a much higher survival rate against our test guards than DQN, but we made other changes, such as reducing gamma and exploration rate, at the same time. It is unclear which changes led to this improvement.
+
+All models took in flattened inputs. We initially experimented with convolutional neural networks to extract features, similarly to how [the original DQN played Atari games](https://arxiv.org/abs/1312.5602), but it was not conclusively better than using a vanilla neural network, so we instead focused on tuning observations and rewards.
+
+We also flirted with Proximal Policy Optimisation (PPO), but its ability to leverage vectorised environments meant that it ran into [the environment's infinite loop problem](https://github.com/til-ai/til-25-environment/commit/474b45c96a213e58d5bc85dbcfcf232e0d9191d4) much more frequently, where the progress bar greets you in the morning stuck at 10% after a laborious night. While Stable Baselines3's [PPO](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html) appeared to converge during training, the output trained weights did not match the performance during training. With DQN showing promising results, we did not dedicate time to debug our PPO implementation.
+
+We also tinkered with different model sizes, but it did not seem to be a significant factor. You can find (most of) the hyperparameters used in our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed).
+
+##### FAFO
+
+Increasing the exploration rate seemed to help thoroughly eliminate behaviour with large penalties, such as voluntarily walking into walls or guards.
+
+#### Perception is Reality
+
+Fundamentally, the agent learns through its observations of the environment, and how the world rewards and punishes it. Thus, we focused our efforts on shaping the observations and rewards.
+
+From the beginning, we decided that it was important for the agent to remember and make use of what it had seen before. Rather than using recurrent networks, which felt finicky (not that we actually tried), we simply persisted information in an array representing the entire map, and passed that to the model, instead of the raw observation provided by the environment.
+
+##### Who am I?
+
+Initial experiments used the entire 16x16 map as input, and merely one-hot encoded the agent's current location in one of the channels. This seemed to leave our model utterly confused, especially since the array is flattened before being passed as input. We found it critical to centre the observation around the agent's current location and direction, so we chose to input either 15x15 (7 tiles in each direction) or 31x31 (15 tiles in each direction) arrays, rotated such that the agent is always facing up.
+
+##### Fine City
+
+Life sentence for walking into walls or spinning.
 
 To be done
 
-### RL Guard Models
+##### No Repeat
+
+Tiles.
 
 To be done
 
-### Overall Analaysis
+##### Guards Across Spacetime
+
+To be done
+
+##### Deadends and Alleyways
+
+To be done
+
+#### Ensemble
+
+Optuna.
+
+To be done
+
+#### Action Masking
+
+To be done
+
+### Overall Analysis
 
 To be done
 
