@@ -672,7 +672,7 @@ As a basic baseline for qualifiers, we used a basic A* algorithm to navigate bet
 
 #### Greedily Estimating Scout Location
 
-![Estimated Scout Locations]()
+![Estimated Scout Locations](docs/rl/estimated_scout_locations.webp)
 
 We wanted the guard to prowl with purpose, so we estimated the probability of the scout being on each tile on each turn, which seemed like a budget alternative to tracking all possible scout paths.
 
