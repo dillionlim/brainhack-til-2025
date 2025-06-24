@@ -570,7 +570,8 @@ Read the [introduction](#introduction) again for a refresher on the RL task obje
 
 For more detailed RL model analysis, refer to our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed). For the simulated environment that we used to evaluate various models with convenience scripts, refer to our [RL model zoo](https://github.com/jxinnan/til-25-rl-zoo).
 
-**Warning:** These submodules are quite large in size (~6 GB in total).
+> [!WARNING]
+> These submodules are quite large in size (~6 GB in total).
 
 ### Key Concepts in RL Planning
 
@@ -693,19 +694,28 @@ The algorithm uses A* to head to the tile with the highest calculated probabilit
 
 ![Estimated Scout Locations in Semi-Finals](docs/rl/estimated_scout_locations_semis.webp)
 
-The logic was rather crude, and could only give very rough estimations of where the scout is. However, the guard greedily re-selects the single tile with the highest calculated probability as its destination every turn, making it susceptible to flaws in how we estimate the scout's location, which manifested during the semi-finals, as seen above.
+The logic was rather crude, and could only give very rough estimations of where the scout is. However, the guard greedily re-selects the single tile with the highest calculated probability as its destination every turn, which is unnecessarily precise, making it susceptible to flaws in how we estimate the scout's location, which manifested during the semi-finals, as seen above.
+
+Unlike the RL scout model, we did not implement hard-coded action masks that would have mitigated oscillations and spinning.
 
 ### Deep RL
 
-We trained two sets of scout agents&mdash;one for peacetime, and one for wartime, following the collector and escaper regimes in [Monte-Carlo Tree Search](#monte-carlo-tree-search-mcts). Although maximising rewards and escaping guards are indeed fairly distinct tasks, this separation for RL models was born out of necessity, after we unwisely spent too much time on perfecting the agents' behaviour when there are no guards.
+> [!NOTE]
+> Given the author's understanding of RL and ML in general (or lack thereof), any interpretation of a deep neural network's behaviour is speculative at best, so please take this section with at least a pinch of salt.
+
+We trained two sets of scout agents&mdash;one for peacetime, and one for wartime, mirroring the collector and escaper regimes in [Monte-Carlo Tree Search](#monte-carlo-tree-search-mcts). Although maximising rewards and escaping guards are indeed fairly distinct tasks, this separation for RL models was born out of necessity, after we unwisely spent too much time on perfecting the agents' behaviour when there are no guards.
 
 #### Multi-Agent RL?
 
 Instead of training against itself or other trained agents, we "embedded" all-seeing guards into the environment, who can always take the shortest path to the scout if you so desire. The user can control the probability that the guard would follow the shortest path on any given turn, allowing us to train progressively and perform a variety of evaluations.
 
+#### Optimisation Philosophy
+
+We evaluated our models in our [RL model zoo](https://github.com/jxinnan/til-25-rl-zoo), which uses seeds 1 to 1000 to generate environments and runs the scout against embedded guards of varying difficulties. This allowed us to obtain deterministic, replicable results that can be used to compare different models. We qualitatively analysed primarily the worst-performing cases of each model, and subsequent improvements generally sought to improve the minimum, rather than the average.
+
 #### Model
 
-Most of our semi-finals models use Stable Baselines3's [Deep Q Network (DQN)](https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html), while some escaper models used [QR-DQN](https://sb3-contrib.readthedocs.io/en/master/modules/qrdqn.html).
+Most of our semi-finals models use Stable Baselines3's [Deep Q Network (DQN)](https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html), while some escaper models use [QR-DQN](https://sb3-contrib.readthedocs.io/en/master/modules/qrdqn.html).
 
 QR-DQN had a much higher survival rate against our test guards than DQN, but we made other changes, such as reducing gamma and exploration rate, at the same time. It is unclear which changes led to this improvement.
 
@@ -715,33 +725,45 @@ We also flirted with Proximal Policy Optimisation (PPO), but its ability to leve
 
 We also tinkered with different model sizes, but it did not seem to be a significant factor. You can find (most of) the hyperparameters used in our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed).
 
-##### FAFO
-
-Increasing the exploration rate seemed to help thoroughly eliminate behaviour with large penalties, such as voluntarily walking into walls or guards.
-
 #### Perception is Reality
 
 Fundamentally, the agent learns through its observations of the environment, and how the world rewards and punishes it. Thus, we focused our efforts on shaping the observations and rewards.
 
-From the beginning, we decided that it was important for the agent to remember and make use of what it had seen before. Rather than using recurrent networks, which felt finicky (not that we actually tried), we simply persisted information in an array representing the entire map, and passed that to the model, instead of the raw observation provided by the environment.
+From the beginning, we decided that it was important for the agent to remember and make use of what it had seen before. Rather than using recurrent networks, which felt finicky (not that we actually tried), we simply persisted information in an array representing the entire map. We manipulated this ground truth array to create observations for our RL agents, instead of directly feeding them the raw observations provided by the environment.
+
+While this was very painful initially, as we struggled with understanding the environment's original output observations, we believe that it was the right strategy in the long run (free information must take).
 
 ##### Who am I?
 
+It is important for the model to be able to locate itself within the input observation.
+
 Initial experiments used the entire 16x16 map as input, and merely one-hot encoded the agent's current location in one of the channels. This seemed to leave our model utterly confused, especially since the array is flattened before being passed as input. We found it critical to centre the observation around the agent's current location and direction, so we chose to input either 15x15 (7 tiles in each direction) or 31x31 (15 tiles in each direction) arrays, rotated such that the agent is always facing up.
 
-##### Fine City
+##### What did I do?
 
-Life sentence for walking into walls or spinning.
+A persistent problem was the model's propensity to repeat actions which made it stuck in an equilibrium, be it moving back and forth between two tiles, or spinning constantly on the same tile.
 
-To be done
+While the model remembered what it has seen in the past, it did not know its own action history. As a result, it would make a decision solely based on the external environment. An ideal model should not end up stuck in the first place, but it is always easier to slap some duct tape and call it a day.
 
-##### No Repeat
+To curb spinning, we added a single binary input to indicate if the agent turned on the previous turn (instead of moving forwards/backwards), while we penalised the model for turning consecutively. This binary input is directly related to the penalty it receives if it turns on the current turn.
 
-Tiles.
+Stopping the agent from moving back and forth was a little more tricky, because moving back to the tile it came from is often necessary, so it is not as simple as penalising a specific behaviour. Instead, we aimed to minimise how often the agent steps on a previously visited tiles, especially more frequently visited tiles. We added an input channel to every tile to represent the number of times the agent has visited this tile so far, and experimented with rewards that scale differently according to this number.
 
-To be done
+This was further finetuned based on the model's behaviour. The agent would spend an extra step on a tile when it turns left or right, so we later excluded the extra step from the visit count. When the agent started reversing out of a path, such as a deadend, it sometimes returns to the final deadend tile after reversing one step, as this final tile had the same visit count as any other tile in the path, which is why we double counted the visit count when the agent moves from a tile back to its previous tile.
 
-##### Guards Across Spacetime
+These optimisations still could not consistently prevent the agent from being stuck between two tiles, which could only be further mitigated by enforcing a proper hierarchy for the values of rewards, and reducing the complexity of rewards to make it less likely for the model to think that it is stuck between a rock and a hard place.
+
+##### Why shouldn't I do this?
+
+There exists actions that would almost never be the optimal move under any circumstances, such as walking into walls or the aforementioned spinning.
+
+Small penalties (on the magnitude of a mission reward) reduced but could not eradicate such misbehaviour. Each time we added more complex rewards, these actions also became more frequent.
+
+The elegant solution would be to implement an action mask during both training and inference (see [MaskablePPO](https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html)), but there was no ready-to-eat implementation for DQN on Stable Baselines3.
+
+Instead, we took out the guillotine and made such unwanted behaviour as heinous a crime as being caught by a guard. The model still occassionally misbehaved, so we upped the exploration rate for the model to better understand the dire consequences of certain actions (that it would rarely perform by itself otherwise), which effectively eradicated misbehaviour without an action mask.
+
+##### Where (and when) are the guards?
 
 To be done
 
