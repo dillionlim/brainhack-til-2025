@@ -374,7 +374,7 @@ Inference Parameters:
 
 See [cv_manager.py](cv/src/wbf/cv_manager.py) and [ensemble.py](cv/src/wbf/ensemble.py) for more details about implementation.
 
-Note: For semi-finals, we did not manage to get TensorRT optimizations to work in time on the 5070 Ti, hence we decided to use a 3 model ensemble without the YOLOv11m model, but with all other parameters (including ensemble weights) unchanged, using PyTorch models in half precision.
+> Note: For semi-finals, we did not manage to get TensorRT optimizations to work in time on the 5070 Ti, hence we decided to use a 3 model ensemble without the YOLOv11m model, but with all other parameters (including ensemble weights) unchanged, using PyTorch models in half precision.
 
 ### Potential Improvements
 
@@ -954,13 +954,37 @@ At the last step (after $N-1$ extensions), each item in beam is a complete permu
 
 ### Travelling Salesman Problem (TSP)
 
-To be done
+The above greedy approaches result in good results for most samples, but can still fail to find the optimal solution. 
+
+We can think of the document strip reconstruction problem as a **complete weighted directed graph**, where the weight of edge $\{i, j\}$ is the SSIM of the right edge of slice $i$ and the left edge of slice $j$. The task would be to find the **maximum weight Hamiltonian Path**. However, this method would almost consistently match the left edge of the true positive leftmost slice with the right edge of the true positive rightmost slice, since they would both be white. 
+
+> ![hamiltonian_path_result](docs/surprise/hamiltonian_path_result.png)
+> *Example of result found using Hamiltonian Path (cropped)*
+
+To solve this issue, we add a strip of white pixels before calculating the SSIM matrix (which represents the weights of graph edges) and instead find the **maximum weight Hamiltonian Cycle** that starts and ends with the white strip. 
+
+```python
+white_strip = np.ones((1, left_edges.shape[1])) * 255
+left_edges  = np.concat([left_edges, white_strip])
+right_edges = np.concat([right_edges, white_strip])
+
+ssim_matrix = calculate_ssim_batch_vs_batch(right_edges, left_edges)
+```
+
+The function `calculate_ssim_batch_vs_batch` makes use of NumPy's vectorized operations to optimize for performance.
+
+This is essentially a variation of the **Traveling Salesman Problem (TSP)** where the objective is to find the longest instead of the shortest path. TSP is NP-hard, and finding the optimal solution using brute force has a time complexity of $O(N!)$, which is only feasible for very small $N < 10$. Given that the samples we were given all had $N = 15$ slices, we decided to use a Held-Karp algorithm modified to find the maximum instead of minimum weight path. This has a time complexity of $O(N^2 \times 2^N)$, which is generally feasible and significantly faster than brute force for moderate $N \lessapprox 20$.
+
+We made use of [Numba](https://github.com/numba/numba)'s `@numba.jit` decorator to compile the `find_max_weight_hamiltonian_path` method in [`SurpriseManager`](surprise/src_python39/surprise_manager_tsp.py#L8) for improved performance. 
+
+> Note: The `@numba.jit` decorator could probably also have been used to optimize `calculate_ssim_batch_vs_batch`, resulting in further marginal performance gains. This was an oversight due to the lack of time.
+
 
 ### Putting it all together
 
 At the point of us asking, the organisers chose not to reveal that the final test dataset would have exactly $N = 15$ slices. Therefore, we went with a hybrid implementation, given that the TSP solution had a time complexity of $O(N^2 \times 2^N)$, and would time out for larger values of $N$. We implemented a low-N-regime and high-N-regime solution, where TSP would be used for $N \leq 20$ and beam search would be used for $N > 20$.
 
-We therefore submitted a final solution for this with accuracy 1.000 and time score 0.965.
+We therefore submitted a final solution for this with accuracy $1.000$ and time score $0.965$.
 
 ### C++ Implementation
 
