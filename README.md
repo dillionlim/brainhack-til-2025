@@ -691,7 +691,9 @@ The algorithm uses A* to head to the tile with the highest calculated probabilit
 
 ##### Areas for Improvement
 
-![Estimated Scout Locations in Semi-Finals]()
+![Estimated Scout Locations in Semi-Finals](docs/rl/estimated_scout_locations_semis.webp)
+
+The logic was rather crude, and could only give very rough estimations of where the scout is. However, the guard greedily re-selects the single tile with the highest calculated probability as its destination every turn, making it susceptible to flaws in how we estimate the scout's location, which manifested during the semi-finals, as seen above.
 
 ### Deep RL
 
