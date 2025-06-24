@@ -338,7 +338,7 @@ The model was trained on 14000 images from the original training dataset + 4000 
 Freeze points at 10, 7 and 4 layers were employed before fine-tuning the fully unfrozen model.
 
 | No. of Frozen Layers | Learning Rate | Epochs | Score |
-| - | - | - | - |
+| :-: | :-: | :-: | :-: |
 | 10 | 1e-4 | 25 | 0.552 |
 | 7 | 6e-5 | 11 | 0.564 |
 | 4 | 3e-5 | 11 | 0.560 |
@@ -355,7 +355,7 @@ We made use of [Weighted boxes fusion (WBF)](#https://github.com/ZFTurbo/Weighte
 Below is a table of the models ensembled to achieve our highest scoring submission:
 
 | Model | Ensemble Weight | Individual Model Score | Description |
-| - | - | - | - |
+| - | :-: | :-: | - |
 | YOLOv11m | 3 | 0.518 | 8 frozen layers |
 | YOLOv8m | 5 | 0.532 | Qualifiers model |
 | YOLOv8m | 8 | 0.579 | Averaged weights across freeze points |
