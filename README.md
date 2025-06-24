@@ -32,16 +32,9 @@
   * [Qualifiers Method](#qualifiers-method)
 * [RL](#rl)
   * [Remote RL Repositories](#remote-rl-repositories)
-  * [Key Concepts in RL Planning](#key-concepts-in-rl-planning)
-  * [The "Two-Turn" Separation Idea](#the-two-turn-separation-idea)
-    * ["One-Turn" Separation](#one-turn-separation)
-    * ["Two-Turn" Separation](#two-turn-separation)
-  * [Deadends](#deadends)
-  * [Breadcrumb Trails](#breadcrumb-trails)
   * [Algorithmic Scout Models](#algorithmic-scout-models)
   * [Algorithmic Guard Models](#algorithmic-guard-models)
   * [Deep RL](#deep-rl)
-  * [Overall Analysis](#overall-analysis)
   * [Qualifiers Method](#qualifiers-method-1)
 * [Surprise Task](#surprise)
   * [Initial Exploration](#initial-exploration)
@@ -568,76 +561,10 @@ Read the [introduction](#introduction) again for a refresher on the RL task obje
 
 ### Remote RL repositories
 
-For more detailed RL model analysis, refer to our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed). For the simulated environment that we used to evaluate various models with convenience scripts, refer to our [RL model zoo](https://github.com/jxinnan/til-25-rl-zoo).
+For more detailed RL model analysis and insufficiently documented training code, refer to our [RL testbed repository](https://github.com/jxinnan/til-25-rl-testbed). For the simulated environment that we used to evaluate various models with convenience scripts, refer to our [RL model zoo](https://github.com/jxinnan/til-25-rl-zoo).
 
 > [!WARNING]
 > These submodules are quite large in size (~6 GB in total).
-
-### Key Concepts in RL Planning
-
-We shall examine a few ideas that we focused on when coming up with a solution to this task.
-
-### The "Two-Turn" Separation Idea
-
-In our model training, we heavily emphasised the idea of a "two-turn" separation minimum between scouts and guards. Let us examine why this is the case, in the particular case of a one-scout-one-guard-chase scenario.
-
-On average, this would be the most common scenario, and the scout can avoid getting caught most easily in this case by following the rule above.
-
-#### "One-Turn" Separation
-
-If the guard can move to the current square a scout is on in only one turn, if both agents play optimally, the guard will eventually always catch the scout, unless there are insufficient moves left before the round ends.
-
-By the nature of the RL task, the moveset for both agents are symmetric, but the maze is finite (16 by 16).
-
-Suppose both agents move optimally, and the guard is one turn away from the scout. If the scout performs any move other than moving away from the guard (i.e. turning, staying still or moving into the guard), it will get caught either in the same turn or the next turn.
-
-This can be seen below:
-
-![Suboptimal Moves](docs/rl/one_turn_suboptimal.png)
-
-The only optimal move for the scout, is therefore to move away from the guard. However, since moves are symmetric, the optimal move for the guard is always to perform the same move as the scout, thereby maintaining a one-turn separation from the scout.
-
-Due to the finite nature of the grid, the scout can never continuously move away from the guard. In fact, since the grid is 16 by 16, the maximum number of moves that a scout can escape for before reaching a wall will be 15. Once it reaches a wall, it needs to make one of the three suboptimal moves mentioned above, and will therefore get caught.
-
-Therefore, if both scout and guards are playing optimally (which was assumed to be the case for semi-finals onwards), if a scout and guard is determined to have a one-turn separation, it will always get caught.
-
-#### "Two-Turn" Separation
-
-As a corollary of the above explanation, a two-turn separation will always guarantee that if both the scout and guard play optimally, the scout will never get caught, even if the game goes on forever.
-
-The suboptimal moves made by the scout in the one-turn scenario (particularly, turning) is supported by the one-turn buffer, where the guard will move to the tile right next to the scout temporarily.
-
-However, after moving forwards / backwards away from the guard, the guard's optimal move is to symmetrically perform the same move. This means that the distance between the scout and guard after this move would be two squares again, and the scout will therefore never get caught **unless it walks into a deadend**.
-
-### Deadends
-
-A deadend is defined as a tile where there are 3 walls surrounding it, or any tile with 2 or more walls, that are adjacent to another deadend tile.
-
-This is illustrated in the image below:
-
-![Deadends](docs/rl/deadend.png)
-
-The yellow cells are all considered to be deadends, because they fulfil the definition above, and they only have one or no possible move that you can make to not return to the previous cell. The blue cell is not a deadend, because there is only one wall attached to the corridor.
-
-It is an extremely risky manoeuvre to enter a deadend, especially if a guard is chasing the scout. Suppose a guard is chasing a scout, and the scout enters a deadend. Even if the scout maintains the two-turn separation as described above, it will eventually get caught because the scout will eventually reach a cell (the last cell of a deadend) that has no moves which maintain the distance between the scout and guard.
-
-Conversely, the blue cell provides two alternative routes away from the cell, and the scout is therefore not locked into a singular choice.
-
-Due to the partially observable nature of the grid, there are two kinds of deadends, "visible" and "invisible" deadends, with the latter being much more deadly. Visible deadends lie within the viewcone of a scout, and therefore can be avoided through a simple rule-based system (i.e. avoid moving into deadend tiles). Invisible deadends, however, involve a long corridor of deadend tiles, where the end of the deadend cannot be seen. This makes it difficult to decide if it is a corridor or deadend.
-
-Let us consider an example map as shown in 
-
-![Hidden Deadend](docs/rl/hidden_deadend.png)
-
-The green area cannot be determined with certainty to be either a deadend or corridor, and the same can be said for the red area, until one enters the deadend. While entering the green area whilst being chased by a guard is not fatal, entering the red area is certainly fatal.
-
-This leads to an important question of risk against reward, where it might be better to be more conservative and avoid such risky areas where possible, against exploring such risky areas, while running the risk of getting cornered. The risk appetite of each team therefore needs to be determined accordingly. 
-
-Naturally, some maps, such as the map depicted above, have many hidden deadends, while some maps, such as the semi-finals map for advanced (seed 41) only have a single hidden deadend, which would therefore result in varying score distributions for different strategies.
-
-### Breadcrumb Trails
-
-For guards, an interesting idea is to make use of breadcrumb trails. Where a scout has collected points, the tiles will no longer have any points on them. When the scout passes through a narrow corridor, this leaves behind a "breadcrumb trail" of empty tiles that the guard can use to track down the scout. In practice, because the guards spawn far away from the scouts, this is rarely useful if the scout enters a large, open room.
 
 ### Algorithmic Scout Models
 
@@ -670,6 +597,10 @@ Furthermore, the ruleset for the escaper could be tuned to avoid unnecessary esc
 #### Basic Prowler `helvetica`
 
 As a basic baseline for qualifiers, we used a basic A* algorithm to navigate between the map's four corners to search for the scout and head directly towards the scout if seen.
+
+#### Breadcrumb Trails
+
+For guards, an interesting idea is to make use of breadcrumb trails. Where a scout has collected points, the tiles will no longer have any points on them. When the scout passes through a narrow corridor, this leaves behind a "breadcrumb trail" of empty tiles that the guard can use to track down the scout. In practice, because the guards spawn far away from the scouts, this is rarely useful if the scout enters a large, open room.
 
 #### Greedily Estimating Scout Location
 
@@ -765,9 +696,45 @@ Instead, we took out the guillotine and made such unwanted behaviour as heinous 
 
 ##### Where (and when) are the guards?
 
-To be done
+It is important to remember recently seen guards, even if you do not see them right now. Just as importantly, we should also remember where we have seen empty space, where there is no guard.
+
+to be done
+
+##### Staying Alive
+
+Other rewards/penalties to reduce being in a disadvantageous position vis-à-vis guards.
+
+to be done
 
 ##### Deadends and Alleyways
+
+to be done
+
+A deadend is defined as a tile where there are 3 walls surrounding it, or any tile with 2 or more walls, that are adjacent to another deadend tile.
+
+This is illustrated in the image below:
+
+![Deadends](docs/rl/deadend.png)
+
+The yellow cells are all considered to be deadends, because they fulfil the definition above, and they only have one or no possible move that you can make to not return to the previous cell. The blue cell is not a deadend, because there is only one wall attached to the corridor.
+
+It is an extremely risky manoeuvre to enter a deadend, especially if a guard is chasing the scout. Suppose a guard is chasing a scout, and the scout enters a deadend. Even if the scout maintains the two-turn separation as described above, it will eventually get caught because the scout will eventually reach a cell (the last cell of a deadend) that has no moves which maintain the distance between the scout and guard.
+
+Conversely, the blue cell provides two alternative routes away from the cell, and the scout is therefore not locked into a singular choice.
+
+Due to the partially observable nature of the grid, there are two kinds of deadends, "visible" and "invisible" deadends, with the latter being much more deadly. Visible deadends lie within the viewcone of a scout, and therefore can be avoided through a simple rule-based system (i.e. avoid moving into deadend tiles). Invisible deadends, however, involve a long corridor of deadend tiles, where the end of the deadend cannot be seen. This makes it difficult to decide if it is a corridor or deadend.
+
+Let us consider an example map as shown in 
+
+![Hidden Deadend](docs/rl/hidden_deadend.png)
+
+The green area cannot be determined with certainty to be either a deadend or corridor, and the same can be said for the red area, until one enters the deadend. While entering the green area whilst being chased by a guard is not fatal, entering the red area is certainly fatal.
+
+This leads to an important question of risk against reward, where it might be better to be more conservative and avoid such risky areas where possible, against exploring such risky areas, while running the risk of getting cornered. The risk appetite of each team therefore needs to be determined accordingly. 
+
+Naturally, some maps, such as the map depicted above, have many hidden deadends, while some maps, such as the semi-finals map for advanced (seed 41) only have a single hidden deadend, which would therefore result in varying score distributions for different strategies.
+
+#### Progressive Training
 
 To be done
 
@@ -779,11 +746,49 @@ To be done
 
 #### Action Masking
 
-To be done
+Closer to the competition, we were not confident that the scout models would perform reliably. As a failsafe to prevent the worst, we added action masks to prevent it from performing definitely stupid actions, such as walking into walls, or walking into a "checkmate", as explained below.
 
-### Overall Analysis
+##### The "Two-Turn" Separation Idea
 
-To be done
+In our action mask, we sought to guarantee a "two-turn" separation minimum between scouts and guards. Let us examine why this is the case, in the particular case of a one-scout-one-guard-chase scenario.
+
+On average, this would be the most common scenario, and the scout can avoid getting caught most easily in this case by following the rule above.
+
+##### "One-Turn" Separation
+
+If the guard can move to the current square a scout is on in only one turn, if both agents play optimally, the guard will eventually always catch the scout, unless there are insufficient moves left before the round ends.
+
+By the nature of the RL task, the moveset for both agents are symmetric, but the maze is finite (16 by 16).
+
+Suppose both agents move optimally, and the guard is one turn away from the scout. If the scout performs any move other than moving away from the guard (i.e. turning, staying still or moving into the guard), it will get caught either in the same turn or the next turn.
+
+This can be seen below:
+
+![Suboptimal Moves](docs/rl/one_turn_suboptimal.png)
+
+The only optimal move for the scout, is therefore to move away from the guard. However, since moves are symmetric, the optimal move for the guard is always to perform the same move as the scout, thereby maintaining a one-turn separation from the scout.
+
+Due to the finite nature of the grid, the scout can never continuously move away from the guard. In fact, since the grid is 16 by 16, the maximum number of moves that a scout can escape for before reaching a wall will be 15. Once it reaches a wall, it needs to make one of the three suboptimal moves mentioned above, and will therefore get caught.
+
+Therefore, if both scout and guards are playing optimally (which was assumed to be the case for semi-finals onwards), if a scout and guard is determined to have a one-turn separation, it will always get caught.
+
+##### "Two-Turn" Separation
+
+As a corollary of the above explanation, a two-turn separation will always guarantee that if both the scout and guard play optimally, the scout will never get caught, even if the game goes on forever.
+
+The suboptimal moves made by the scout in the one-turn scenario (particularly, turning) is supported by the one-turn buffer, where the guard will move to the tile right next to the scout temporarily.
+
+However, after moving forwards / backwards away from the guard, the guard's optimal move is to symmetrically perform the same move. This means that the distance between the scout and guard after this move would be two squares again, and the scout will therefore never get caught **unless it walks into a deadend**.
+
+We enforced this separation when only one guard is visible. The scout model is not allowed to move into any tile within two turns of the guard, which includes the two tiles extended in each of the four directions from the current guard location. If both the scout and the guard move towards each other, a two-tile gap can instantly become a fatal one-turn separation.
+
+However, it was a rushed implementation, and we did not keep track of the guards' directions, so we lifted this action mask when more than one guard is visible, so that we do not accidentally prevent our scout from escaping successfully in more complex scenarios. A well thought out action mask would serve as good guardrails for sometimes unstable and misbehaving deep RL models.
+
+#### Guards
+
+Guards were very much an afterthought. We started training from a pre-trained scout model, but with modified input observations to include scout sightings, and revamped its rewards to primarily focus on reducing its distance to the scout if it is out of sight, and maintaining sight on the scout once seen.
+
+Guards using deep RL performed decently against deep RL scouts, which they were trained against, but underperformed against algorithmic scouts compared to our algorithmic guards. This is an intriguing discrepancy that we did not analyse any further, and we concentrated our efforts on training scout models.
 
 ### Qualifiers Method
 
