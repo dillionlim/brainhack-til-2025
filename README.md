@@ -980,7 +980,7 @@ At the last step (after $N-1$ extensions), each item in beam is a complete permu
 
 The above greedy approaches result in good results for most samples, but can still fail to find the optimal solution. 
 
-We can think of the document strip reconstruction problem as a **complete weighted directed graph**, where the weight of edge $\left\{i, j\right\}$ is the SSIM of the right edge of slice $i$ and the left edge of slice $j$. The task would be to find the **maximum weight Hamiltonian Path**. However, this method would almost consistently match the left edge of the true positive leftmost slice with the right edge of the true positive rightmost slice, since they would both be white. 
+We can think of the document strip reconstruction problem as a **complete weighted directed graph**, where the weight of edge $\lbrace i, j\rbrace$ is the SSIM of the right edge of slice $i$ and the left edge of slice $j$. The task would be to find the **maximum weight Hamiltonian Path**. However, this method would almost consistently match the left edge of the true positive leftmost slice with the right edge of the true positive rightmost slice, since they would both be white. 
 
 > ![hamiltonian_path_result](docs/surprise/hamiltonian_path_result.png)
 > *Example of result found using Hamiltonian Path (cropped)*
