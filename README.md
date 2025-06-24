@@ -20,6 +20,7 @@
   * [Potential SAHI Usage](#potential-sahi-usage)
   * [Two-Stage Approach](#two-stage-approach)
   * [Freeze Points](#freeze-points)
+  * [Data Generation](#data-generation)
   * [Best Single Model](#best-single-model)
   * [Weighted Boxes Fusion (WBF)](#weighted-boxes-fusion-wbf)
   * [Potential Improvements](#potential-improvements)
@@ -270,7 +271,7 @@ The only optimization done was to conduct batch inference in batches of 4 (since
 
 ## CV
 
-The CV task was a simple object detection task, with objects from [18 pre-defined classes](https://github.com/til-ai/til-25/wiki/Challenge-specifications#target-list). The training dataset provided included 20000 JPEG images of dimensions 1920 (W) × 1080 (H).
+The CV task was a simple object detection task, with objects from [18 pre-defined classes](https://github.com/til-ai/til-25/wiki/Challenge-specifications#target-list). The training dataset provided included 20000 landscape JPEG images of dimensions `1920×1080`.
 
 ### Summary of Results
 
@@ -280,6 +281,7 @@ The CV task was a simple object detection task, with objects from [18 pre-define
 | YOLOv8m | freeze=10,6,3,0 | 0.578 | - |
 | YOLOv8l (Best single model) | see [best single model](#best-single-model) | 0.584 | 0.853 (before optimizations) |
 | Weighted Boxes Fusion | 4 model ensemble (see [WBF](#weighted-boxes-fusion-wbf)) | 0.615 | 0.892 |
+| Weighted Boxes Fusion (Semi-finals) | 3 model ensemble used in semi-finals | 0.609 | 0.859 |
 
 ### Data Augmentation
 
@@ -317,11 +319,21 @@ Models pre-trained on the COCO dataset learn many features which are transferrab
 
 It is also interesting to note that simply averaging the weights of the same model, trained on the same data but at different stages of training yielded a higher accuracy that each of the individual models before averaging.
 
+### Data Generation
+
+A custom dataset was also generated in an effort to prevent overfitting on the training data (implemented [here](cv/data-generation/generate.ipynb)). These were the steps taken:
+
+1. Background images and images of the targets were webscrapped using the `bing_image_downloader` library. 
+2. As most images of the target objects had their own backgrounds, they were removed with the `rembg` library. 
+3. The background images were resized to `1920x1080` per the training data.   
+4. The objects (now with transparent background) were pasted on the background images. In the training data, air vehicles seem to be smaller in size compared to others and were harder to detect. As such, they were made to be smaller (2000-12000 pixel squares) compared to other object classes (14000-30000 pixel squares).
+5. The images were augmented with the aforementioned [augmentations](#data-augmentation).  
+
 ### Best Single Model
 
-The best score we achieved using a single model was with YOLOv8l, yielding an accuracy of 0.584. 
+The best score we achieved using a single model was with YOLOv8l, yielding an accuracy of $0.584$. 
 
-The model was trained on 14000 images from the original training dataset + 4000 self-generated synthetic images, all [augmented](#data-augmentation).
+The model was trained on 14000 images from the original training dataset + 4000 [self-generated synthetic images](#data-generation), all [augmented](#data-augmentation).
 
 Freeze points at 10, 7 and 4 layers were employed before fine-tuning the fully unfrozen model.
 
@@ -334,27 +346,41 @@ Freeze points at 10, 7 and 4 layers were employed before fine-tuning the fully u
 
 ![yolov8l_score_per_training_stage](/docs/cv/yolov8l_score_per_training_stage.png)
 
-By averaging the final fine-tuned weights with the weights of the model with 7 frozen layers, the resulting model achieved an accuracy of 0.584 on the hidden test set. 
+By averaging the final fine-tuned weights with the weights of the model with 7 frozen layers, the resulting model achieved an accuracy of $0.584$ on the hidden test set. 
 
 ### Weighted Boxes Fusion (WBF)
 
-TODO
+We made use of [Weighted boxes fusion (WBF)](#https://github.com/ZFTurbo/Weighted-Boxes-Fusion) to ensemble the predictions of multiple models. Class agnostic Non-Maximum Suppression (NMS) was also applied as a final step to reduce the occurence of multiple bounding boxes predicted for the same object.
 
-### Data Generation
+Below is a table of the models ensembled to achieve our highest scoring submission:
 
-A custom dataset was also generated in an effort to prevent overfitting on the training data (implemented [here](cv/data-generation/generate.ipynb)). These were the steps taken:
+| Model | Ensemble Weight | Individual Model Score | Description |
+| - | - | - | - |
+| YOLOv11m | 3 | 0.518 | 8 frozen layers |
+| YOLOv8m | 5 | 0.532 | Qualifiers model |
+| YOLOv8m | 8 | 0.579 | Averaged weights across freeze points |
+| YOLOv8l | 8 | 0.584 | See [best single model](#best-single-model) |
 
-1. Background images and images of the targerts were webscrapped using the `bing_image_downloader` library. 
-2. As most images of the target objects had their own backgrounds, they were removed with the `rembg` library. 
-3. The background images were resized to `1920x1080` per the training data.   
-4. The objects (now with transparent background) were pasted on the background images. In the training data, air vehicles seem to be smaller in size compared to others and were harder to detect. As such, they were made to be smaller (2000-12000 pixel squares) compared to other vehicles (14000-30000 pixel squares).
-5. The images were augmented with the aforementioned augmentations.  
+All models except the qualifiers YOLOv8m model were trained on the same dataset with 14000 images from original dataset + 4000 [self-generated images](#data-generation). The qualifiers model used only the original dataset with no additional data.
+
+Inference Parameters:
+
+* Individual models NMS `iou = 0.6`
+* WBF parameters
+    * `skip_box_thr = 0.10`
+    * `iou_thr = 0.5`
+* Class agnostic NMS `iou_thr = 0.5`
+* Final confidence threshold `final_conf = 0.25`
+
+See [cv_manager.py](cv/src/wbf/cv_manager.py) and [ensemble.py](cv/src/wbf/ensemble.py) for more details about implementation.
+
+Note: For semi-finals, we did not manage to get TensorRT optimizations to work in time on the 5070 Ti, hence we decided to use a 3 model ensemble without the YOLOv11m model, but with all other parameters (including ensemble weights) unchanged, using PyTorch models in half precision.
 
 ### Potential Improvements
 
 1. Use larger models
 
-   Due to time constraints and hardward limitations, we were unable to test out larger models. However, using a larger model like [YOLOv6-L6](https://github.com/meituan/YOLOv6) would likely have improved or CV score significantly.
+   Due to time constraints and hardware limitations, we were unable to test out larger models. However, using a larger model like [YOLOv6-L6](https://github.com/meituan/YOLOv6) would likely have improved our CV score significantly.
    
 2. SAHI
 
@@ -969,6 +995,8 @@ Nevertheless, the C++ container submitted ended up having the exact same speed (
 ## Hardware Used
 
 Aside from the GCP instance, we also made use of Kaggle's free 2xT4 and TPUv4-8 pod for training.
+
+The YOLOv8m models used for CV were trained on an RTX 3070.
 
 RL was also trained / evaluated on edge devices (varying architectures )on all members simultaneously to speed things up.
 
