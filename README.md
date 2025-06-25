@@ -35,6 +35,14 @@
   * [Algorithmic Scout Models](#algorithmic-scout-models)
   * [Algorithmic Guard Models](#algorithmic-guard-models)
   * [Deep RL](#deep-rl)
+    * [Model](#model)
+    * [Perception is Reality](#perception-is-reality)
+    * [Deadends and Alleyways](#deadends-and-alleyways)
+    * [The "Two-Turn" Separation Idea](#the-two-turn-separation-idea)
+    * [Progressive Training](#progressive-training)
+    * [Switcheroo](#switcheroo)
+    * [Ensemble](#ensemble)
+    * [Guards](#guards)
   * [Qualifiers Method](#qualifiers-method-1)
 * [Surprise Task](#surprise)
   * [Initial Exploration](#initial-exploration)
@@ -634,8 +642,6 @@ Unlike the RL scout model, we did not implement hard-coded action masks that wou
 > [!NOTE]
 > Given the author's understanding of RL and ML in general (or lack thereof), any interpretation of a deep neural network's behaviour is speculative at best, so please take this section with at least a pinch of salt.
 
-We trained two sets of scout agents&mdash;one for peacetime, and one for wartime, mirroring the collector and escaper regimes in [Monte-Carlo Tree Search](#monte-carlo-tree-search-mcts). Although maximising rewards and escaping guards are indeed fairly distinct tasks, this separation for RL models was born out of necessity, after we unwisely spent too much time on perfecting the agents' behaviour when there are no guards.
-
 #### Multi-Agent RL?
 
 Instead of training against itself or other trained agents, we "embedded" all-seeing guards into the environment, who can always take the shortest path to the scout if you so desire. The user can control the probability that the guard would follow the shortest path on any given turn, allowing us to train progressively and perform a variety of evaluations.
@@ -690,7 +696,7 @@ There exists actions that would almost never be the optimal move under any circu
 
 Small penalties (on the magnitude of a mission reward) reduced but could not eradicate such misbehaviour. Each time we added more complex rewards, these actions also became more frequent.
 
-The elegant solution would be to implement an action mask during both training and inference (see [MaskablePPO](https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html)), but there was no ready-to-eat implementation for DQN on Stable Baselines3.
+The elegant solution would be to implement an action mask during both training and inference (see [MaskablePPO](https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html)), but there was no similar ready-to-eat implementation for DQN on Stable Baselines3.
 
 Instead, we took out the guillotine and made such unwanted behaviour as heinous a crime as being caught by a guard. The model still occassionally misbehaved, so we upped the exploration rate for the model to better understand the dire consequences of certain actions (that it would rarely perform by itself otherwise), which effectively eradicated misbehaviour without an action mask.
 
@@ -698,17 +704,20 @@ Instead, we took out the guillotine and made such unwanted behaviour as heinous 
 
 It is important to remember recently seen guards, even if you do not see them right now. Just as importantly, we should also remember where we have seen empty space, where there is no guard.
 
-to be done
+We expressed this numerically by defining 0 as "safe" (currently seen to be empty) and 1 as "dangerous" (currently seen to have a guard). Over time, this number decays towards 0.5 as its default value.
 
-##### Staying Alive
+We played around with this decay, and determined that an exponential decay was likely the best compared to a simple linear decay.
 
-Other rewards/penalties to reduce being in a disadvantageous position vis-à-vis guards.
+#### Staying Alive
 
-to be done
+Early models trained against guards did not survive well in our evaluations. We found two main reasons for this:
 
-##### Deadends and Alleyways
+1. The agent entered deadends and alleyways while being chased.
+2. The agent moved towards the guard unnecessarily, and reduced their separation to only one turn.
 
-to be done
+We shall examine these two concepts in further detail.
+
+#### Deadends and Alleyways
 
 A deadend is defined as a tile where there are 3 walls surrounding it, or any tile with 2 or more walls, that are adjacent to another deadend tile.
 
@@ -730,27 +739,23 @@ Let us consider an example map as shown in
 
 The green area cannot be determined with certainty to be either a deadend or corridor, and the same can be said for the red area, until one enters the deadend. While entering the green area whilst being chased by a guard is not fatal, entering the red area is certainly fatal.
 
-This leads to an important question of risk against reward, where it might be better to be more conservative and avoid such risky areas where possible, against exploring such risky areas, while running the risk of getting cornered. The risk appetite of each team therefore needs to be determined accordingly. 
+Naturally, with more than one guard present, entering any long alleyway runs the risk of being pincered by two guards from both ends, although this is a smaller risk compared to that of deadends.
+
+This leads to an important question of risk against reward, where it might be better to be more conservative and avoid such risky areas where possible, compared to exploring such risky areas, while running the risk of getting cornered. The risk appetite of each team therefore needs to be determined accordingly.
 
 Naturally, some maps, such as the map depicted above, have many hidden deadends, while some maps, such as the semi-finals map for advanced (seed 41) only have a single hidden deadend, which would therefore result in varying score distributions for different strategies.
 
-#### Progressive Training
+We tried penalising the agent for entering deadends, with increasing penalties the deeper they go, as well as for being next to two walls, to include alleyways that are not deadends. The model learnt to avoid deadends effectively, but at a great cost.
 
-To be done
+![Alleyways Near Spawn](docs/rl/map_272.png)
 
-#### Ensemble
+The scout is only guaranteed an at least 3x3 spawn room. However, it is possible that all possible paths out of spawn are alleyways that appear to be possibly hidden deadends. We found that the model would choose to stay in spawn, even when there are no guards nearby. Increasing the penalties for repeated tiles did not reduce this problem, as there are generally enough tiles around spawn for the scout to "spread" its penalties, and it also worsened [oscillations](#what-did-i-do).
 
-Optuna.
+Eventually, we stopped directly penalising entering deadends. The model developed similar behaviour by itself when it was trained against guards.
 
-To be done
+#### The "Two-Turn" Separation Idea
 
-#### Action Masking
-
-Closer to the competition, we were not confident that the scout models would perform reliably. As a failsafe to prevent the worst, we added action masks to prevent it from performing definitely stupid actions, such as walking into walls, or walking into a "checkmate", as explained below.
-
-##### The "Two-Turn" Separation Idea
-
-In our action mask, we sought to guarantee a "two-turn" separation minimum between scouts and guards. Let us examine why this is the case, in the particular case of a one-scout-one-guard-chase scenario.
+It is important to guarantee a "two-turn" separation minimum between scouts and guards. Let us examine why this is the case, in the particular case of a one-scout-one-guard-chase scenario.
 
 On average, this would be the most common scenario, and the scout can avoid getting caught most easily in this case by following the rule above.
 
@@ -780,9 +785,39 @@ The suboptimal moves made by the scout in the one-turn scenario (particularly, t
 
 However, after moving forwards / backwards away from the guard, the guard's optimal move is to symmetrically perform the same move. This means that the distance between the scout and guard after this move would be two squares again, and the scout will therefore never get caught **unless it walks into a deadend**.
 
+We tried to penalise the scout for being within two tiles of a guard, but it did not improve survival rates, and only added to the complexity of the rewards, worsening [oscillations](#what-did-i-do).
+
+#### Action Masking
+
+Closer to the competition, we were not confident that the scout models would perform reliably. As a failsafe to prevent the worst, we added action masks to prevent it from performing definitely stupid actions, such as walking into walls, or walking into a "checkmate", as explained [previously](#the-two-turn-separation-idea).
+
 We enforced this separation when only one guard is visible. The scout model is not allowed to move into any tile within two turns of the guard, which includes the two tiles extended in each of the four directions from the current guard location. If both the scout and the guard move towards each other, a two-tile gap can instantly become a fatal one-turn separation.
 
 However, it was a rushed implementation, and we did not keep track of the guards' directions, so we lifted this action mask when more than one guard is visible, so that we do not accidentally prevent our scout from escaping successfully in more complex scenarios. A well thought out action mask would serve as good guardrails for sometimes unstable and misbehaving deep RL models.
+
+#### Progressive Training
+
+We believed that if the model could not master a simple task, it would be hopeless to train it on a more complex task. We started training in environments where the guards were stationary, hoping that the model would master understanding the maps and collecting rewards first.
+
+As a result, we spent too much time optimising the model to ensure that it never ever misbehaves by itself without pressure from guards. We started properly training our model to escape guards only a few days before the semi-finals. The model was first trained against only a single chasing guard, before we started training it against multiple moving guards.
+
+We are not sure if training progressively yields better results than simply training against multiple guards from scratch, because we never tried. However, we found it helpful to make small incremental steps, which made it easier to pinpoint the likely cause of any new problems.
+
+#### Switcheroo
+
+Models trained against guards would often misbehave when there are no guards present, and we had little time to iron out these issues. Meanwhile, the models trained with stationary guards were well-behaved and more stable.
+
+Therefore, for the semi-finals, we used two sets of scout agents&mdash;one for peacetime, and one for wartime, mirroring the collector and escaper regimes in [Monte-Carlo Tree Search](#monte-carlo-tree-search-mcts). Although maximising rewards and escaping guards are indeed fairly distinct tasks, this separation for RL models was born out of necessity, after we unwisely spent too much time on perfecting the agents' behaviour when there are no guards.
+
+#### Ensemble
+
+[As mentioned previously](#optimisation-philosophy), we wanted even the worst-case performance of our models to be reasonable. We realised that each model underperforms on different specific maps, where a different model with a worse average score would do better. Improving the worst-case performance was especially important for our escaper models, where mistakes are costly, and the models were not as well-trained as collector models.
+
+Seeing [how effective ensembling was for CV](#weighted-boxes-fusion-wbf), we attempted to implement it for RL too. It was made simpler since we used a similar implementation of DQN across all of our models, allowing us to simply take a weighted sum of the output Q-values for each action. Intuitively, we hoped that when only some models associate a certain action with imminent danger (being caught), its output Q-values would be large enough in magnitude to avoid those actions.
+
+We used [Optuna](https://optuna.org/) to find an optimal combination of models and their associated weights, with one ensemble of collector models aiming to maximise rewards when there are no guards around, and another ensemble of escaper models aiming to maximise survival against multiple guards. In our own evaluation, both ensembles performed better on average than any individual constituent models.
+
+However, there are certainly individual cases where the ensemble underperforms its constituents. We also did not try other ensembling methods, such as simple voting.
 
 #### Guards
 
@@ -1051,7 +1086,7 @@ Aside from the GCP instance, we also made use of Kaggle's free 2xT4 and TPUv4-8 
 
 The YOLOv8m models used for CV were trained on an RTX 3070.
 
-RL was also trained / evaluated on edge devices (varying architectures )on all members simultaneously to speed things up.
+RL was also trained and evaluated on edge devices (ranging from 7th Gen i7 with Intel UHD Graphics to Apple M2 and RTX 3080 Ti Laptop) by all members simultaneously to speed things up.
 
 ## Final words
 We like to thank [Ryan](https://github.com/ryan-tribex), [Ada](https://github.com/HoWingYip) and [Tianshi](https://github.com/qitianshi) for their hard work in setting up the technical side of the competition (which is an impressive combination of various frameworks - ROS, websocketing, networking, hardware infrastructure, etc) and support during the competition.
