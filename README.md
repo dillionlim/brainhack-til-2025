@@ -42,6 +42,7 @@
     * [Progressive Training](#progressive-training)
     * [Switcheroo](#switcheroo)
     * [Ensemble](#ensemble)
+    * [Semi-Finals Performance](#semi-finals-performance)
     * [Guards](#guards)
   * [Qualifiers Method](#qualifiers-method-1)
 * [Surprise Task](#surprise)
@@ -109,10 +110,10 @@ git submodule update --init
 
 In this format, a single round was conducted to decide the winner in each bracket.
 
-We theorize that our subpar semi-finals showing was due to the fact that:
+We theorize that our subpar semi-finals showing was due to the following:
 
-1. There was a bug in the guard algorithm in the 2nd round.
-2. We prioritised a low-risk strategy with the focus being primarily on preventing the scout from getting caught. This led to the scout being unwilling to take riskier paths down narrow corridors where more missions and recon points could be gathered, resulting in a lower score.
+1. [There was a bug in the guard algorithm in the 2nd round.](#areas-for-improvement-1)
+2. [The scout was risk-averse and did not always perform optimally.](#semi-finals-performance)
 
 ## Evaluation results (Qualifiers)
 | Task | Model | Accuracy score | Speed Score |
@@ -809,15 +810,23 @@ Models trained against guards would often misbehave when there are no guards pre
 
 Therefore, for the semi-finals, we used two sets of scout agents&mdash;one for peacetime, and one for wartime, mirroring the collector and escaper regimes in [Monte-Carlo Tree Search](#monte-carlo-tree-search-mcts). Although maximising rewards and escaping guards are indeed fairly distinct tasks, this separation for RL models was born out of necessity, after we unwisely spent too much time on perfecting the agents' behaviour when there are no guards.
 
+The models were not trained with the switcheroo, however. For example, the escaper models may end up in unfamiliar states, since they were "teleported" to that point by the collector models. It is unclear if this would lead to reduced performance for both models.
+
 #### Ensemble
 
 [As mentioned previously](#optimisation-philosophy), we wanted even the worst-case performance of our models to be reasonable. We realised that each model underperforms on different specific maps, where a different model with a worse average score would do better. Improving the worst-case performance was especially important for our escaper models, where mistakes are costly, and the models were not as well-trained as collector models.
 
-Seeing [how effective ensembling was for CV](#weighted-boxes-fusion-wbf), we attempted to implement it for RL too. It was made simpler since we used a similar implementation of DQN across all of our models, allowing us to simply take a weighted sum of the output Q-values for each action. Intuitively, we hoped that when only some models associate a certain action with imminent danger (being caught), its output Q-values would be large enough in magnitude to avoid those actions.
+Seeing [how effective ensembling was for CV](#weighted-boxes-fusion-wbf), we attempted to implement it for RL too. It was made simpler since we used a similar implementation of DQN across all of our models, allowing us to take a weighted sum of the output Q-values for each action. Intuitively, we hoped that when only some models associate a certain action with imminent danger (being caught), its output Q-values would be large enough in magnitude for the entire ensemble to avoid those actions.
 
 We used [Optuna](https://optuna.org/) to find an optimal combination of models and their associated weights, with one ensemble of collector models aiming to maximise rewards when there are no guards around, and another ensemble of escaper models aiming to maximise survival against multiple guards. In our own evaluation, both ensembles performed better on average than any individual constituent models.
 
-However, there are certainly individual cases where the ensemble underperforms its constituents. We also did not try other ensembling methods, such as simple voting.
+However, there are certainly outlier cases where the ensemble underperforms its constituents. We also did not try other ensembling methods, such as simple voting.
+
+#### Semi-Finals Performance
+
+![Replay of Semi-Finals](docs/rl/semi-finals-ori.webp)
+
+The escaper models were understandably risk-averse and unwilling to take riskier paths down narrow corridors where more missions and recon points could be gathered. While there were no major mistakes, the scout certainly made some questionable choices that also resulted in a lower score.
 
 #### Guards
 
