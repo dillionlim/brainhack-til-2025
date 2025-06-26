@@ -32,6 +32,9 @@
   * [Qualifiers Method](#qualifiers-method)
 * [RL](#rl)
   * [Remote RL Repositories](#remote-rl-repositories)
+  * [LLM Scout/Guard Models](#llm-scoutguard-models)
+    * [Token Limiting](#token-limiting)
+    * [Areas for Improvement](#areas-for-improvement)
   * [Algorithmic Scout Models](#algorithmic-scout-models)
   * [Algorithmic Guard Models](#algorithmic-guard-models)
   * [Deep RL](#deep-rl)
@@ -574,6 +577,66 @@ For more detailed RL model analysis and insufficiently documented training code,
 
 > [!WARNING]
 > These submodules are quite large in size (~6 GB in total).
+
+### LLM Scout/Guard Models
+
+We initially tried experimenting with some thinking LLM scout models, given all the hype about them getting great scores on things like AIME. The only reasonably small LLM model which could fit in the allowed memory would be [Qwen-3 0.6B](https://github.com/QwenLM/Qwen3), which is a very small thinking model. 
+
+#### Token Limiting
+
+Thinking takes a while as the LLM needs time to generate the tokens. Some ideas are to perform prompt finetuning to point the model to being concise, but in our experiments, it has not worked out very well. A naive approach would result in more than 1 hour for evaluation, which leads to an error timeout.
+
+Therefore, what we tried was an artificial token limit, as shown below.
+
+```python
+class ThinkingTokenBudgetProcessor(LogitsProcessor):
+    """
+    A processor where after a maximum number of tokens are generated,
+    a </think> token is added at the end to stop the thinking generation,
+    and then it will continue to generate the response.
+    """
+    def __init__(self, tokenizer, max_thinking_tokens=None):
+        self.tokenizer = tokenizer
+        self.max_thinking_tokens = max_thinking_tokens
+        self.think_end_token = self.tokenizer.encode("</think>", add_special_tokens=False)[0]
+        self.nl_token = self.tokenizer.encode("\n", add_special_tokens=False)[0]
+        self.tokens_generated = 0
+        self.stopped_thinking = False
+        self.neg_inf = float('-inf')
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        self.tokens_generated += 1
+        if self.max_thinking_tokens == 0 and not self.stopped_thinking and self.tokens_generated > 0:
+            scores[:] = self.neg_inf
+            scores[0][self.nl_token] = 0
+            scores[0][self.think_end_token] = 0
+            self.stopped_thinking = True
+            return scores
+
+        if self.max_thinking_tokens is not None and not self.stopped_thinking:
+            if (self.tokens_generated / self.max_thinking_tokens) > .95:
+                scores[0][self.nl_token] = scores[0][self.think_end_token] * (1 + (self.tokens_generated / self.max_thinking_tokens))
+                scores[0][self.think_end_token] = (
+                    scores[0][self.think_end_token] * (1 + (self.tokens_generated / self.max_thinking_tokens))
+                )
+
+            if self.tokens_generated >= (self.max_thinking_tokens - 1):
+                if self.tokens_generated == self.max_thinking_tokens-1:
+                    scores[:] = self.neg_inf
+                    scores[0][self.nl_token] = 0
+                else:
+                    scores[:] = self.neg_inf
+                    scores[0][self.think_end_token] = 0
+                    self.stopped_thinking = True
+
+        return scores
+```
+
+This token limiter artificially limits the tokens used for thinking, cutting it off at a fixed amount. This sped up each move a lot, but it still does not fit within the 2 seconds required per move in finals.
+
+#### Areas for Improvement
+
+A possible improvement would be to replan every $x$ steps, so that the model could output a series of steps at once, and the amortized time per step would be significantly reduced. In the interest of time, this solution was not explored.
 
 ### Algorithmic Scout Models
 
