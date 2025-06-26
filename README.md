@@ -1,68 +1,88 @@
 # DSTA BrainHack TIL-AI 2025 - Team DeepSheet
 
 <!-- TOC -->
-* [Introduction](#introduction)
-* [Team Members (in alphabetical order)](#team-members-in-alphabetical-order)
-* [Achievements](#achievements)
-* [Evaluation Results](#evaluation-results-pre-semi-finals)
-* [ASR](#asr)
-  * [Exploratory Data Analysis](#exploratory-data-analysis-eda)
-  * [Denoising](#denoising)
-  * [Training](#training)
-    * [Training Attempt (Whisper, Denoising)](#training-attempt-whisper-denoising)
-    * [Training (Parakeet)](#training-parakeet)
-  * [Hyperparameters](#hyperparameters)
-  * [Inference](#inference)
-  * [Additional Steps to Improve](#additional-steps-to-improve)
-* [CV](#cv)
-  * [Summary of Results](#summary-of-results)
-  * [Data Augmentation](#data-augmentation)
-  * [Potential SAHI Usage](#potential-sahi-usage)
-  * [Two-Stage Approach](#two-stage-approach)
-  * [Freeze Points](#freeze-points)
-  * [Data Generation](#data-generation)
-  * [Best Single Model](#best-single-model)
-  * [Weighted Boxes Fusion (WBF)](#weighted-boxes-fusion-wbf)
-  * [Potential Improvements](#potential-improvements)
-* [OCR](#ocr)
-  * [Preprocessing](#preprocessing)
-  * [Postprocessing](#postprocessing)
-  * [Models Tried](#models-tried)
-  * [Training](#training-1)
-  * [Qualifiers Method](#qualifiers-method)
-* [RL](#rl)
-  * [Remote RL Repositories](#remote-rl-repositories)
-  * [LLM Scout/Guard Models](#llm-scoutguard-models)
-    * [Token Limiting](#token-limiting)
-    * [Areas for Improvement](#areas-for-improvement)
-  * [Algorithmic Scout Models](#algorithmic-scout-models)
-  * [Algorithmic Guard Models](#algorithmic-guard-models)
-  * [Deep RL](#deep-rl)
-    * [Model](#model)
-    * [Perception is Reality](#perception-is-reality)
-    * [Deadends and Alleyways](#deadends-and-alleyways)
-    * [The "Two-Turn" Separation Idea](#the-two-turn-separation-idea)
-    * [Progressive Training](#progressive-training)
-    * [Switcheroo](#switcheroo)
-    * [Ensemble](#ensemble)
-    * [Semi-Finals Performance](#semi-finals-performance)
-    * [Guards](#guards)
-  * [Qualifiers Method](#qualifiers-method-1)
-* [Surprise Task](#surprise)
-  * [Initial Exploration](#initial-exploration)
-  * [Analysis](#analysis)
-    * [Mean Squared Error (MSE)](#mean-squared-error-mse)
-    * [Structural Similarity Index Measure (SSIM)](#structural-similarity-index-measure-ssim)
-    * [Comparison](#comparison)
-  * [Initial naive implementation of SSIM](#initial-naive-implementation-of-ssim)
-  * [Beam Search](#beam-search)
-    * [Composite Similarity Matrix](#composite-similarity-matrix)
-    * [Conducting Beam Search and Path-Pruning](#conducting-beam-search-and-path-pruning)
-  * [Travelling Salesman Problem (TSP)](#travelling-salesman-problem-tsp)
-  * [Putting it all together](#putting-it-all-together)
-  * [C++ Implementation](#c-implementation)
-* [Hardware used](#hardware-used)
-* [Final words](#final-words)
+- [DSTA BrainHack TIL-AI 2025 - Team DeepSheet](#dsta-brainhack-til-ai-2025---team-deepsheet)
+  - [Introduction](#introduction)
+    - [Additional Note](#additional-note)
+  - [Team Members (in alphabetical order)](#team-members-in-alphabetical-order)
+  - [Achievements](#achievements)
+  - [Evaluation results (Qualifiers)](#evaluation-results-qualifiers)
+  - [Evaluation results (Pre-semi-finals)](#evaluation-results-pre-semi-finals)
+  - [ASR](#asr)
+    - [Exploratory Data Analysis (EDA)](#exploratory-data-analysis-eda)
+    - [Denoising](#denoising)
+    - [Training](#training)
+      - [Training Attempt (Whisper, Denoising)](#training-attempt-whisper-denoising)
+      - [Training (Parakeet)](#training-parakeet)
+    - [Hyperparameters](#hyperparameters)
+    - [Inference](#inference)
+    - [Additional Steps to Improve](#additional-steps-to-improve)
+  - [CV](#cv)
+    - [Summary of Results](#summary-of-results)
+    - [Data Augmentation](#data-augmentation)
+    - [Potential SAHI Usage](#potential-sahi-usage)
+    - [Two-Stage Approach](#two-stage-approach)
+    - [Freeze Points](#freeze-points)
+    - [Data Generation](#data-generation)
+    - [Best Single Model](#best-single-model)
+    - [Weighted Boxes Fusion (WBF)](#weighted-boxes-fusion-wbf)
+    - [Potential Improvements](#potential-improvements)
+  - [OCR](#ocr)
+    - [Preprocessing](#preprocessing)
+    - [Postprocessing](#postprocessing)
+    - [Models Tried](#models-tried)
+      - [Training](#training-1)
+    - [Qualifiers Method](#qualifiers-method)
+  - [RL](#rl)
+    - [Remote RL repositories](#remote-rl-repositories)
+    - [LLM Scout/Guard Models](#llm-scoutguard-models)
+      - [Token Limiting](#token-limiting)
+      - [Areas for Improvement](#areas-for-improvement)
+    - [Algorithmic Scout Models](#algorithmic-scout-models)
+      - [Basic Greedy Model](#basic-greedy-model)
+      - [Monte-Carlo Tree Search (MCTS)](#monte-carlo-tree-search-mcts)
+      - [Areas for Improvement](#areas-for-improvement-1)
+    - [Algorithmic Guard Models](#algorithmic-guard-models)
+      - [Basic Prowler `helvetica`](#basic-prowler-helvetica)
+      - [Breadcrumb Trails](#breadcrumb-trails)
+      - [Greedily Estimating Scout Location](#greedily-estimating-scout-location)
+        - [Areas for Improvement](#areas-for-improvement-2)
+    - [Deep RL](#deep-rl)
+      - [Multi-Agent RL?](#multi-agent-rl)
+      - [Optimisation Philosophy](#optimisation-philosophy)
+      - [Model](#model)
+      - [Perception is Reality](#perception-is-reality)
+        - [Who am I?](#who-am-i)
+        - [What did I do?](#what-did-i-do)
+        - [Why shouldn't I do this?](#why-shouldnt-i-do-this)
+        - [Where (and when) are the guards?](#where-and-when-are-the-guards)
+      - [Staying Alive](#staying-alive)
+      - [Deadends and Alleyways](#deadends-and-alleyways)
+      - [The "Two-Turn" Separation Idea](#the-two-turn-separation-idea)
+        - ["One-Turn" Separation](#one-turn-separation)
+        - ["Two-Turn" Separation](#two-turn-separation)
+      - [Action Masking](#action-masking)
+      - [Progressive Training](#progressive-training)
+      - [Switcheroo](#switcheroo)
+      - [Ensemble](#ensemble)
+      - [Semi-Finals Performance](#semi-finals-performance)
+      - [Guards](#guards)
+    - [Qualifiers Method](#qualifiers-method-1)
+  - [Surprise](#surprise)
+    - [Initial Exploration](#initial-exploration)
+    - [Analysis](#analysis)
+      - [Mean Squared Error (MSE)](#mean-squared-error-mse)
+      - [Structural Similarity Index Measure (SSIM)](#structural-similarity-index-measure-ssim)
+      - [Comparison](#comparison)
+    - [Initial naive implementation of SSIM](#initial-naive-implementation-of-ssim)
+    - [Beam Search](#beam-search)
+      - [Composite Similarity Matrix](#composite-similarity-matrix)
+      - [Conducting Beam Search and Path-Pruning](#conducting-beam-search-and-path-pruning)
+    - [Travelling Salesman Problem (TSP)](#travelling-salesman-problem-tsp)
+    - [Putting it all together](#putting-it-all-together)
+    - [C++ Implementation](#c-implementation)
+  - [Hardware Used](#hardware-used)
+  - [Final words](#final-words)
 <!-- TOC -->
 
 ## Introduction
@@ -122,14 +142,14 @@ We theorize that our subpar semi-finals showing was due to the following:
 | Task | Model | Accuracy score | Speed Score |
 |-|-|-|-|
 | ASR | parakeet-tdt-0.6b-v2 | 0.952 | 0.939 |
-| CV | TODO | 0.532 | 0.947 |
+| CV | YOLOv8m | 0.532 | 0.947 |
 | OCR | PaddleOCR [^2] | 1.000 | 0.941 |
 
 ## Evaluation results (Pre-semi-finals)
 | Task | Model | Accuracy score | Speed Score |
 |-|-|-|-|
 | ASR | parakeet-tdt-0.6b-v2 (Unchanged) | 0.952 | 0.939 |
-| CV | TODO | 0.615 | 0.892 [^3] |
+| CV | WBF (4 model ensemble) | 0.615 | 0.892 [^3] |
 | OCR | DocTR | 0.981 | 0.841 |
 | Surprise | TSP-SSIM (Low-N-Regime) + Beam Search-SSIM (High-N-Regime) [^4] | 1.000 | 0.965 |
 
@@ -276,7 +296,7 @@ The only optimization done was to conduct batch inference in batches of 4 (since
 
 ## CV
 
-The CV task was a simple object detection task, with objects from [18 pre-defined classes](https://github.com/til-ai/til-25/wiki/Challenge-specifications#target-list). The training dataset provided included 20000 landscape JPEG images of dimensions `1920×1080`.
+The CV task was a simple object detection task, with objects from [18 pre-defined classes](https://github.com/til-ai/til-25/wiki/Challenge-specifications#target-list). The training dataset provided included 20000 landscape `.jpg` images of dimensions `1920×1080`.
 
 ### Summary of Results
 
@@ -379,7 +399,8 @@ Inference Parameters:
 
 See [cv_manager.py](cv/src/wbf/cv_manager.py) and [ensemble.py](cv/src/wbf/ensemble.py) for more details about implementation.
 
-> Note: For semi-finals, we did not manage to get TensorRT optimizations to work in time on the 5070 Ti, hence we decided to use a 3 model ensemble without the YOLOv11m model, but with all other parameters (including ensemble weights) unchanged, using PyTorch models in half precision.
+> [!NOTE]
+> For semi-finals, we did not manage to get TensorRT optimizations to work in time on the 5070 Ti, hence we decided to use a 3 model ensemble without the YOLOv11m model, but with all other parameters (including ensemble weights) unchanged, using PyTorch models in half precision.
 
 ### Potential Improvements
 
@@ -1109,11 +1130,12 @@ ssim_matrix = calculate_ssim_batch_vs_batch(right_edges, left_edges)
 
 The function `calculate_ssim_batch_vs_batch` makes use of NumPy's vectorized operations to optimize for performance.
 
-This is essentially a variation of the **Traveling Salesman Problem (TSP)** where the objective is to find the longest instead of the shortest path. TSP is NP-hard, and finding the optimal solution using brute force has a time complexity of $O(N!)$, which is only feasible for very small $N < 10$. Given that the samples we were given all had $N = 15$ slices, we decided to use a Held-Karp algorithm modified to find the maximum instead of minimum weight path. This has a time complexity of $O(N^2 \times 2^N)$, which is generally feasible and significantly faster than brute force for moderate $N \lessapprox 20$.
+This is essentially a variation of the **Traveling Salesman Problem (TSP)** where the objective is to find the longest instead of the shortest path. TSP is NP-hard, and finding the optimal solution using brute force has a time complexity of $O(N!)$, which is only feasible for very small $N < 10$. Given that the samples we were given all had $N = 15$ slices, we decided to use a [Held-Karp](https://en.wikipedia.org/wiki/Held–Karp_algorithm) algorithm modified to find the maximum instead of minimum weight path. This has a time complexity of $O(N^2 \times 2^N)$, which is generally feasible and significantly faster than brute force for moderate $N \lessapprox 20$.
 
 We made use of [Numba](https://github.com/numba/numba)'s `@numba.jit` decorator to compile the `find_max_weight_hamiltonian_path` method in [`SurpriseManager`](surprise/src_python39/surprise_manager_tsp.py#L8) for improved performance. 
 
-> Note: The `@numba.jit` decorator could probably also have been used to optimize `calculate_ssim_batch_vs_batch`, resulting in further marginal performance gains. This was an oversight due to the lack of time.
+> [!NOTE]
+> The `@numba.jit` decorator could probably also have been used to optimize `calculate_ssim_batch_vs_batch`, resulting in further marginal performance gains. This was an oversight due to the lack of time.
 
 
 ### Putting it all together
