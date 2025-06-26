@@ -1158,7 +1158,7 @@ Aside from the GCP instance, we also made use of Kaggle's free 2xT4 and TPUv4-8 
 
 The YOLOv8m models used for CV were trained on an RTX 3070.
 
-RL was also trained and evaluated on edge devices (ranging from 7th Gen i7 with Intel UHD Graphics to Apple M2 and RTX 3080 Ti Laptop) by all members simultaneously to speed things up.
+RL was also trained and evaluated on edge devices (ranging from 7th Gen i7 with Intel UHD Graphics to Apple M2 and RTX 3080 Ti / 4080 Ti Laptop) by all members simultaneously to speed things up.
 
 ## Final words
 We like to thank [Ryan](https://github.com/ryan-tribex), [Ada](https://github.com/HoWingYip) and [Tianshi](https://github.com/qitianshi) for their hard work in setting up the technical side of the competition (which is an impressive combination of various frameworks - ROS, websocketing, networking, hardware infrastructure, etc) and support during the competition.
